@@ -15,6 +15,22 @@ $gfx.LineTo(175, 700);
 $gfx.CurveToInitial( 300, 800,  400, 720 );
 $gfx.ClosePath;
 $gfx.Stroke;
+
+my $x = 10;
+my $y = 600;
+
+$gfx.LineWidth = 3;
+
+for [ :DeviceGray[.2], :DeviceGray[.5] ],
+    [ :DeviceRGB[.9, .1, .1,], :DeviceRGB[.1, .1, .9] ],
+    [ :DeviceCMYK[.9, .1, .1, .1], :DeviceCMYK[.1, .1, .9, .5] ] {
+    $gfx.FillColor = .[0];
+    $gfx.StrokeColor = .[1];
+    $gfx.Rectangle($x, $y, 40, 40);
+    $gfx.FillStroke;
+    $x += 60;
+}
+
 $gfx.Restore;
 
 $gfx.Save;

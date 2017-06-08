@@ -30,7 +30,12 @@ class PDF::To::Cairo {
                 $!ctx.rgb( |$colors );
             }
             when 'DeviceGray' {
-                my @rgb = (1..3).map: {$colors[0] - 1.0};
+                my @rgb = $colors[0] xx 3;
+                $!ctx.rgb( |@rgb );
+            }
+            when 'DeviceCMYK' {
+                my Color $color .= new: :cmyk($colors);
+                my @rgb = $color.rgb.map: * / 255;
                 $!ctx.rgb( |@rgb );
             }
             default {
@@ -58,8 +63,11 @@ class PDF::To::Cairo {
     }
     method SetStrokeRGB(*@) {}
     method SetFillRGB(*@) {}
+    method SetStrokeCMYK(*@) {}
+    method SetFillCMYK(*@) {}
     method SetStrokeGray(*@) {}
     method SetFillGray(*@) {}
+    method EndPath() { $!ctx.new_path }
 
     method MoveTo(Numeric $x, Numeric $y) {
         $!ctx.move_to: |self!coords($x,$y);
@@ -122,6 +130,13 @@ class PDF::To::Cairo {
 
         $!ctx.transform( $transform );
     }
+
+    method BeginText() { }
+    method EndText() { }
+
+    method BeginMarkedContent(Str) { }
+    method BeginMarkedContentDict(Str, Hash) { }
+    method EndMarkedContent() { }
 
     method callback($op, *@args, :$obj) {
         without $!gfx {$!gfx = $obj; self!init};
