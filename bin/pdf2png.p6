@@ -40,6 +40,7 @@ sub MAIN(Str $infile,            #| input PDF
 	    if $png_filename eq $save-as && $pages > 1;
 
 	my $page = $doc.page($page-num);
+        $*ERR.print: "saving page $page-num -> $png_filename...\n"; 
         convert($page, $png_filename);
     }
 

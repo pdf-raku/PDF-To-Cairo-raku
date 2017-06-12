@@ -4,9 +4,12 @@ class PDF::To::Cairo {
     use Color;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin;
     has PDF::Content::Ops $!gfx;
+    use PDF::Content::Font;
     has $.content is required handles <width height>;
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
     has Cairo::Context $.ctx = Cairo::Context.new($!surface);
+    has $!current-font;
+    has Hash @!save;
 
     method TWEAK() {
         $!content.render: sub ($op, *@args, :$obj) { self.callback($op, |@args, :$obj) };
@@ -46,8 +49,20 @@ class PDF::To::Cairo {
     method !set-stroke-color { self!set-color($!gfx.StrokeColor) }
     method !set-fill-color { self!set-color($!gfx.FillColor) }
 
-    method Save()      { $!ctx.save; }
-    method Restore()   { $!ctx.restore; }
+    method Save()      {
+        $!ctx.save;
+        @!save.push: %(
+            :font($!current-font)
+        );
+    }
+    method Restore()   {
+        $!ctx.restore;
+        if @!save {
+            with @!save.pop {
+                $!current-font = .<font>;
+            }
+        }
+    }
     method ClosePath() { $!ctx.close_path; }
     method Stroke()    {
         self!set-stroke-color;
@@ -132,6 +147,15 @@ class PDF::To::Cairo {
     }
 
     method BeginText() { }
+    method SetFont($font-key, $font-size) {
+        with $!gfx.resource-entry('Font', $font-key) {
+            $!current-font = PDF::Content::Font.from-dict($_);
+        }
+        else {
+            warn "unable to locate Font in resource dictionary: $font-key";
+            $!current-font = Nil;
+        }
+    }
     method EndText() { }
 
     method BeginMarkedContent(Str) { }
