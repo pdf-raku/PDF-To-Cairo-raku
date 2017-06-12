@@ -148,11 +148,11 @@ class PDF::To::Cairo {
         self!concat-matrix(|@matrix);
     }
     method BeginText() { }
+    has %!font-cache;
     method SetFont($font-key, $font-size) {
-        warn { :$font-key, :$font-size }.perl;
         $!ctx.set_font_size($font-size);
         with $!gfx.resource-entry('Font', $font-key) {
-            $!current-font = PDF::Content::Font.from-dict($_);
+            $!current-font = %!font-cache{$font-key} //= PDF::Content::Font.from-dict($_);
             my $cairo-weight = $!current-font.Weight eq 'Bold'
                 ?? Cairo::FontWeight::FONT_WEIGHT_BOLD
                 !! Cairo::FontWeight::FONT_WEIGHT_NORMAL;
@@ -172,9 +172,27 @@ class PDF::To::Cairo {
     method ShowText($text-encoded) {
         $!ctx.save;
         self!concat-matrix(|$!gfx.TextMatrix);
-        self!set-stroke-color;
+        self!set-fill-color;
         $!ctx.move_to(0,0);
         $!ctx.show_text: $!current-font.decode($text-encoded, :str);
+        $!ctx.restore;
+    }
+    method ShowSpaceText(List $text) {
+        $!ctx.save;
+        self!concat-matrix(|$!gfx.TextMatrix);
+        self!set-fill-color;
+        my $xpos = 0;
+        my Numeric $font-size = $!gfx.Font[1];
+        for $text.list {
+            $!ctx.move_to($xpos,0);
+            when Str {
+                $!ctx.show_text: $!current-font.decode($_, :str);
+                $xpos += $!ctx.text_extents($_).width;
+            }
+            when Numeric {
+                $xpos -= $_ * $font-size / 1000;
+            }
+        }
         $!ctx.restore;
     }
     method EndText() { }

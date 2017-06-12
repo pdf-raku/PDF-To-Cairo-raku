@@ -14,8 +14,14 @@ $page.graphics: -> $gfx {
     $page.text: {
         .set-font($font, 10);
         isa-ok $feed.current-font, 'Font::Metrics::helvetica', 'current-font';
-        .text-position = [50, 50];
+        .text-position = [50, 180];
         .print('Hello World!');
+        .text-position = [10, 160];
+        my $text = $['The', -500, 'long', -500, 'and', -200, 'short.'];
+        .ShowSpaceText($text);
+        .set-font($font, 15);
+        .text-position = [10, 140];
+        .ShowSpaceText($text);
     }
 }
 $feed.surface.write_png: "t/text.png";
