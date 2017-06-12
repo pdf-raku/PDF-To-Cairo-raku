@@ -5,10 +5,11 @@ class PDF::To::Cairo {
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin;
     has PDF::Content::Ops $!gfx;
     use PDF::Content::Font;
+    use PDF::Content::Util::Font;
     has $.content is required handles <width height>;
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
     has Cairo::Context $.ctx = Cairo::Context.new($!surface);
-    has $!current-font;
+    has $.current-font;
     has Hash @!save;
 
     method TWEAK() {
@@ -51,15 +52,13 @@ class PDF::To::Cairo {
 
     method Save()      {
         $!ctx.save;
-        @!save.push: %(
-            :font($!current-font)
-        );
+        @!save.push: %( :$!current-font );
     }
     method Restore()   {
         $!ctx.restore;
         if @!save {
             with @!save.pop {
-                $!current-font = .<font>;
+                $!current-font = .<current-font>;
             }
         }
     }
@@ -133,9 +132,9 @@ class PDF::To::Cairo {
         $!ctx.rectangle( |self!coords($x, $y), $w, - $h);
     }
 
-    method ConcatMatrix(Num(Numeric) $scale-x, Num(Numeric) $skew-x,
-                        Num(Numeric) $skew-y, Num(Numeric) $scale-y,
-                        Num(Numeric) $trans-x, Num(Numeric) $trans-y) {
+    method !concat-matrix(Num(Numeric) $scale-x, Num(Numeric) $skew-x,
+                           Num(Numeric) $skew-y, Num(Numeric) $scale-y,
+                           Num(Numeric) $trans-x, Num(Numeric) $trans-y) {
 
         my $transform = Cairo::cairo_matrix_t.new(
             :xx($scale-x), :yy($scale-y),
@@ -145,16 +144,38 @@ class PDF::To::Cairo {
 
         $!ctx.transform( $transform );
     }
-
+    method ConcatMatrix(*@matrix) {
+        self!concat-matrix(|@matrix);
+    }
     method BeginText() { }
     method SetFont($font-key, $font-size) {
+        warn { :$font-key, :$font-size }.perl;
+        $!ctx.set_font_size($font-size);
         with $!gfx.resource-entry('Font', $font-key) {
             $!current-font = PDF::Content::Font.from-dict($_);
+            my $cairo-weight = $!current-font.Weight eq 'Bold'
+                ?? Cairo::FontWeight::FONT_WEIGHT_BOLD
+                !! Cairo::FontWeight::FONT_WEIGHT_NORMAL;
+            my $cairo-slant = $!current-font.ItalicAngle
+                ?? Cairo::FontSlant::FONT_SLANT_ITALIC
+                !! Cairo::FontSlant::FONT_SLANT_NORMAL;
+            $!ctx.select_font_face($!current-font.FamilyName, $cairo-weight, $cairo-slant);
         }
         else {
             warn "unable to locate Font in resource dictionary: $font-key";
-            $!current-font = Nil;
+            $!current-font = PDF::Content::Util::Font.core-font('courier');
+            $!ctx.select_font_face('courier', Cairo::FontWeight::FONT_WEIGHT_NORMAL, Cairo::FontSlant::FONT_SLANT_NORMAL);
         }
+    }
+    method SetTextMatrix(*@) { }
+    method TextMove(Numeric, Numeric) { }
+    method ShowText($text-encoded) {
+        $!ctx.save;
+        self!concat-matrix(|$!gfx.TextMatrix);
+        self!set-stroke-color;
+        $!ctx.move_to(0,0);
+        $!ctx.show_text: $!current-font.decode($text-encoded, :str);
+        $!ctx.restore;
     }
     method EndText() { }
 
