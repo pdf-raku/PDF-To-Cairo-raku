@@ -60,6 +60,15 @@ $page.graphics: -> $gfx {
             }
         }
     }
+
+    $page.text: {
+        .text-position = [10, $y -= 30];
+
+        for 100, 75, 150 -> $hs {
+            .HorizScaling = $hs;
+            .ShowText("HorizScale $hs ");
+        }
+     }
 }
 $feed.surface.write_png: "t/text.png";
 $pdf.save-as: "t/text.pdf";

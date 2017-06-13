@@ -18,6 +18,7 @@ class PDF::To::Cairo {
     has Hash @!save;
     has Numeric $!tx = 0.0;
     has Numeric $!ty = 0.0;
+    has Numeric $!hscale = 1.0;
 
     method TWEAK() {
         $!content.render: sub ($op, *@args, :$obj) { self.callback($op, |@args, :$obj) };
@@ -186,6 +187,10 @@ class PDF::To::Cairo {
     method SetTextRender(Int) { }
     method !show-text($text) {
         my \text-render = $!gfx.TextRender;
+
+        my Numeric $text-rise = $!gfx.TextRise;
+        $!ctx.move_to($!tx / $!hscale, $!ty - $!gfx.TextRise);
+
         given text-render {
             when 0 { # normal
                 self!set-fill-color;
@@ -211,39 +216,41 @@ class PDF::To::Cairo {
                 }
            }
         }
+        $!tx += $!ctx.text_extents($text).x_advance * $!hscale;
+        $!ty += $!ctx.text_extents($text).y_advance;
+    }
+
+    method !text(&stuff) {
+        $!ctx.save;
+        self!concat-matrix(|$!gfx.TextMatrix);
+        $!hscale = $!gfx.HorizScaling  / 100;
+        $!ctx.scale($!hscale, 1)
+            unless $!hscale =~= 1.0;
+        &stuff();
+        $!ctx.restore;
     }
 
     method ShowText($text-encoded) {
-        $!ctx.save;
-        self!concat-matrix(|$!gfx.TextMatrix);
-        $!ctx.move_to($!tx,$!ty - $!gfx.TextRise);
-        my $text = $!current-font.decode($text-encoded, :str);
-        self!show-text: $text;
-        $!tx += $!ctx.text_extents($text).x_advance;
-        $!ty += $!ctx.text_extents($text).y_advance;
-        $!ctx.restore;
+        self!text: {
+            self!show-text: $!current-font.decode($text-encoded, :str);
+        }
     }
     method ShowSpaceText(List $text) {
-        $!ctx.save;
-        self!concat-matrix(|$!gfx.TextMatrix);
-        my Numeric $font-size = $!gfx.Font[1];
-        my Numeric $text-rise = $!gfx.TextRise;
-        for $text.list {
-            $!ctx.move_to($!tx, $!ty - $text-rise);
-            when Str {
-                my $text = $!current-font.decode($_, :str);
-                self!show-text: $text;
-                $!tx += $!ctx.text_extents($text).x_advance;
-                $!ty += $!ctx.text_extents($text).y_advance;
-            }
-            when Numeric {
-                $!tx -= $_ * $font-size / 1000;
+        self!text: {
+            my Numeric $font-size = $!gfx.Font[1];
+            for $text.list {
+                when Str {
+                    self!show-text: $!current-font.decode($_, :str);
+                }
+                when Numeric {
+                    $!tx -= $_ * $font-size / 1000;
+                }
             }
         }
-        $!ctx.restore;
     }
     method SetTextLeading($) { }
     method SetTextRise($) { }
+    method SetHorizScaling($) { }
     method TextNextLine() {
         $!tx = 0.0;
         $!ty = 0.0;
