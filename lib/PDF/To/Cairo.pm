@@ -1,5 +1,10 @@
+use v6;
+
 class PDF::To::Cairo {
 
+# A draft renderer for PDF to PNG
+# AIM is preview output for PDF::Content generated PDF's
+# 
     use Cairo;
     use Color;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin;
@@ -11,6 +16,8 @@ class PDF::To::Cairo {
     has Cairo::Context $.ctx = Cairo::Context.new($!surface);
     has $.current-font;
     has Hash @!save;
+    has Numeric $!tx = 0.0;
+    has Numeric $!ty = 0.0;
 
     method TWEAK() {
         $!content.render: sub ($op, *@args, :$obj) { self.callback($op, |@args, :$obj) };
@@ -27,28 +34,29 @@ class PDF::To::Cairo {
         (x, -y);
     }
 
-    method !set-color($_) {
+    method !set-color($_, $alpha) {
         my ($cs, $colors) = .kv;
         given $cs {
             when 'DeviceRGB' {
-                $!ctx.rgb( |$colors );
+                $!ctx.rgba( |$colors, $alpha );
             }
             when 'DeviceGray' {
                 my @rgb = $colors[0] xx 3;
-                $!ctx.rgb( |@rgb );
+                $!ctx.rgba( |@rgb, $alpha );
             }
             when 'DeviceCMYK' {
                 my Color $color .= new: :cmyk($colors);
                 my @rgb = $color.rgb.map: * / 255;
-                $!ctx.rgb( |@rgb );
+                $!ctx.rgba( |@rgb, $alpha );
             }
             default {
                 warn "can't handle colorspace: $_";
             }
         }
     }
-    method !set-stroke-color { self!set-color($!gfx.StrokeColor) }
-    method !set-fill-color { self!set-color($!gfx.FillColor) }
+
+    method !set-stroke-color { self!set-color($!gfx.StrokeColor, $!gfx.StrokeAlpha) }
+    method !set-fill-color { self!set-color($!gfx.FillColor, $!gfx.FillAlpha) }
 
     method Save()      {
         $!ctx.save;
@@ -167,33 +175,89 @@ class PDF::To::Cairo {
             $!ctx.select_font_face('courier', Cairo::FontWeight::FONT_WEIGHT_NORMAL, Cairo::FontSlant::FONT_SLANT_NORMAL);
         }
     }
-    method SetTextMatrix(*@) { }
-    method TextMove(Numeric, Numeric) { }
+    method SetTextMatrix(*@) {
+        $!tx = 0.0;
+        $!ty = 0.0;
+    }
+    method TextMove(Numeric, Numeric) {
+        $!tx = 0.0;
+        $!ty = 0.0;
+    }
+    method SetTextRender(Int) { }
+    method !show-text($text) {
+        my \text-render = $!gfx.TextRender;
+        given text-render {
+            when 0 { # normal
+                self!set-fill-color;
+                $!ctx.show_text($text);
+            }
+            when 3 { # invisible
+            }
+            default { # other modoes
+                my \add-to-path = ?(text-render == 4|5|7);
+                my \fill = ?(text-render == 0|2|4|6);
+                my \stroke = ?(text-render == 1|2|5|6);
+
+                $!ctx.text_path($text);
+
+                if fill {
+                    self!set-fill-color;
+                    $!ctx.fill: :preserve(stroke||add-to-path);
+                }
+
+                if stroke {
+                    self!set-stroke-color;
+                    $!ctx.stroke: :preserve(add-to-path);
+                }
+           }
+        }
+    }
+
     method ShowText($text-encoded) {
         $!ctx.save;
         self!concat-matrix(|$!gfx.TextMatrix);
-        self!set-fill-color;
-        $!ctx.move_to(0,0);
-        $!ctx.show_text: $!current-font.decode($text-encoded, :str);
+        $!ctx.move_to($!tx,$!ty - $!gfx.TextRise);
+        my $text = $!current-font.decode($text-encoded, :str);
+        self!show-text: $text;
+        $!tx += $!ctx.text_extents($text).x_advance;
+        $!ty += $!ctx.text_extents($text).y_advance;
         $!ctx.restore;
     }
     method ShowSpaceText(List $text) {
         $!ctx.save;
         self!concat-matrix(|$!gfx.TextMatrix);
-        self!set-fill-color;
-        my $xpos = 0;
         my Numeric $font-size = $!gfx.Font[1];
+        my Numeric $text-rise = $!gfx.TextRise;
         for $text.list {
-            $!ctx.move_to($xpos,0);
+            $!ctx.move_to($!tx, $!ty - $text-rise);
             when Str {
-                $!ctx.show_text: $!current-font.decode($_, :str);
-                $xpos += $!ctx.text_extents($_).width;
+                my $text = $!current-font.decode($_, :str);
+                self!show-text: $text;
+                $!tx += $!ctx.text_extents($text).x_advance;
+                $!ty += $!ctx.text_extents($text).y_advance;
             }
             when Numeric {
-                $xpos -= $_ * $font-size / 1000;
+                $!tx -= $_ * $font-size / 1000;
             }
         }
         $!ctx.restore;
+    }
+    method SetTextLeading($) { }
+    method SetTextRise($) { }
+    method TextNextLine() {
+        $!tx = 0.0;
+        $!ty = 0.0;
+    }
+    method TextMoveSet($!tx, Numeric) {
+        $!ty = 0.0;
+    }
+    method MoveShowText($text-encoded) {
+        $!tx = 0.0;
+        $!ty = 0.0;
+        self.ShowText($text-encoded);
+    }
+    method MoveSetShowText(Numeric, Numeric, $text-encoded) {
+        self.MoveShowText($text-encoded);
     }
     method EndText() { }
 
