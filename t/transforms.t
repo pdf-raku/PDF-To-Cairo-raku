@@ -3,7 +3,7 @@ use Test;
 use PDF::Lite;
 use PDF::To::Cairo;
 use PDF::Content::Util::TransformMatrix;
-use Cairo;
+use Cairo:ver(v0.2.1..*);
 
 my $pdf = PDF::Lite.new;
 my $page = $pdf.add-page;
@@ -12,17 +12,17 @@ my $feed = PDF::To::Cairo.new: :content($page);
 my $gfx = $page.gfx;
 
 $gfx.Save;
-is-deeply $feed.ctx.matrix, Cairo::cairo_matrix_t.new( :y0(200) ), 'matrix initial';
+is-deeply $feed.ctx.matrix, Cairo::Matrix.new.init( :y0(200) ), 'matrix initial';
 $gfx.ConcatMatrix(2, 0, 0, 3, 0, 0);
-is-deeply $feed.ctx.matrix, Cairo::cairo_matrix_t.new( :xx(2), :yy(3), :y0(200) ), 'scale';
+is-deeply $feed.ctx.matrix, Cairo::Matrix.new.init( :xx(2), :yy(3), :y0(200) ), 'scale';
 $gfx.Restore;
-is-deeply $feed.ctx.matrix, Cairo::cairo_matrix_t.new( :xx(1), :yy(1), :y0(200) ), 'restore';
+is-deeply $feed.ctx.matrix, Cairo::Matrix.new.init( :xx(1), :yy(1), :y0(200) ), 'restore';
 
-my $translate = Cairo::cairo_matrix_t.new.init( :translate, 20, -30);
+my $translate = Cairo::Matrix.new.init( :translate, 20, -30);
 
 $gfx.Save;
 $gfx.ConcatMatrix: PDF::Content::Util::TransformMatrix::translate(20,30);
-is-deeply $feed.ctx.matrix, Cairo::cairo_matrix_t.new( :x0(20), :y0(170) ), 'translate';
+is-deeply $feed.ctx.matrix, Cairo::Matrix.new.init( :x0(20), :y0(170) ), 'translate';
 $gfx.Restore;
 
 $gfx.Save;
