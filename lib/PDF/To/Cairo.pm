@@ -22,9 +22,10 @@ class PDF::To::Cairo {
     has Numeric $!ty = 0.0;
     has Numeric $!hscale = 1.0;
 
-    method TWEAK(:$!gfx = $!content.gfx) {
-        $!gfx.callback.push: self.callback;
+    method TWEAK(:$!gfx = $!content.gfx: :!render) {
         self!init;
+        $!gfx.callback.push: self.callback;
+        $!content.render($!gfx);
     }
 
     method !init {
@@ -283,9 +284,7 @@ class PDF::To::Cairo {
     has Cairo::Surface %!form-cache{Any};
     method !make-form($xobject) {
         %!form-cache{$xobject} //= do {
-            my $gfx = $xobject.new-gfx;
-            my $renderer = self.new: :content($xobject), :$gfx;
-            $gfx.ops: $xobject.gfx.ops;
+            my $renderer = self.new: :content($xobject);
             $renderer.surface;
         }
     }
@@ -335,4 +334,45 @@ class PDF::To::Cairo {
 
     our %nyi;
     method FALLBACK($name, *@args) { %nyi{$name} //= do {warn "can't do: $name\(@args[]\) yet";} }
+
+    multi method save-page-as('png', PDF::Content::Graphics $content, Str $png-filename) {
+        my $feed = self.new: :$content;
+        $feed.surface.write_png: $png-filename;
+    }
+
+    multi method save-page-as('svg', PDF::Content::Graphics $content, Str $svg-filename) {
+        my $surface = Cairo::Surface::SVG.create($svg-filename, $content.width, $content.height);
+        my $feed = self.new: :$content, :$surface;
+        $surface.finish;
+    }
+
+    multi method save-as($pdf, Str $outfile where /:i '.'('png'|'svg') $/) {
+        my \format = $0.lc;
+        my UInt $pages = $pdf.page-count;
+
+        for 1 .. $pages -> UInt $page-num {
+
+            my $img_filename = $outfile.sprintf($page-num);
+            die "invalid 'sprintf' output page format: $outfile"
+                if $img_filename eq $outfile && $pages > 1;
+
+            my $page = $pdf.page($page-num);
+            $*ERR.print: "saving page $page-num -> {format.uc} $img_filename...\n"; 
+            $.save-page-as(format, $page, $img_filename);
+        }
+    }
+
+    multi method save-as($pdf, Str $outfile where /:i '.pdf' $/) {
+        my $page1 = $pdf.page(1);
+        my $surface = Cairo::Surface::PDF.create($outfile, $page1.width, $page1.height);
+        my UInt $pages = $pdf.page-count;
+
+        for 1 .. $pages -> UInt $page-num {
+            my $page = $pdf.page($page-num);
+            my $feed = PDF::To::Cairo.new: :content($page), :$surface;
+            $surface.show_page;
+        }
+        $surface.finish;
+     }
+
 }

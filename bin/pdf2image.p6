@@ -17,39 +17,19 @@ multi sub output-filename(Str $infile) is default {
       !! $infile.subst(/ '.' $ext$/, '%03d.png');
 }
 
-sub MAIN(Str $infile,            #| input PDF
-         Str $outfile = output-filename($infile),
-	 Str :$password = '',    #| password for the input PDF, if encrypted
-	 Str :$save-as is copy,  #| output template filename
-    ) {
+subset ImageFile of Str where /:i '.' [png|svg|pdf]/;
 
-    $save-as = output-filename( $save-as // $infile );
+sub MAIN(Str $infile,            #| input PDF
+         ImageFile $outfile = output-filename($infile),
+	 Str :$password = '',    #| password for the input PDF, if encrypted
+    ) {
 
     my $input = $infile eq q{-}
         ?? $*IN
 	!! $infile;
 
-    my $doc = PDF::Lite.open( $input, :$password);
-
-    my UInt $pages = $doc.page-count;
-
-    for 1 .. $pages -> UInt $page-num {
-
-	my $png_filename = $save-as.sprintf($page-num);
-	die "invalid 'sprintf' output page format: $save-as"
-	    if $png_filename eq $save-as && $pages > 1;
-
-	my $page = $doc.page($page-num);
-        $*ERR.print: "saving page $page-num -> $png_filename...\n"; 
-        convert($page, $png_filename);
-    }
-
-    sub convert(PDF::Content::Graphics $content, Str $png-filename) {
-        my $feed = PDF::To::Cairo.new: :$content;
-        $content.gfx;
-        $feed.surface.write_png: $png-filename;
-    }
-
+    my $pdf = PDF::Lite.open( $input, :$password);
+    PDF::To::Cairo.save-as($pdf, $outfile);
 }
 
 =begin pod
