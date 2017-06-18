@@ -33,9 +33,12 @@ $page.graphics: -> $gfx {
         .ShowText("line");
         .TextNextLine;
         .ShowText("next ");
-        .ShowText("line");
+        .ShowText("line. ");
+        .TextMoveSet(5,-10);
+        .ShowText("descended+indented text");
+        .MoveShowText("move-show-text");
  
-        .text-position = [10, $y -= 40];
+        .text-position = [10, $y -= 55];
 
         .ShowText("text ");
         .TextRise = 3;

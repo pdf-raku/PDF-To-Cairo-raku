@@ -5,13 +5,15 @@ class PDF::To::Cairo {
 # A draft renderer for PDF to PNG
 # AIM is preview output for PDF::Content generated PDF's
 # 
-    use Cairo;
+    use Cairo:ver(v0.2.1..*);
     use Color;
+    use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin;
     has PDF::Content::Ops $!gfx;
     use PDF::Content::Font;
+    use PDF::Content::XObject;
     use PDF::Content::Util::Font;
-    has $.content is required handles <width height>;
+    has PDF::Content::Graphics $.content is required handles <width height>;
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
     has Cairo::Context $.ctx = Cairo::Context.new($!surface);
     has $.current-font;
@@ -20,8 +22,9 @@ class PDF::To::Cairo {
     has Numeric $!ty = 0.0;
     has Numeric $!hscale = 1.0;
 
-    method TWEAK() {
-        $!content.render: sub ($op, *@args, :$obj) { self.callback($op, |@args, :$obj) };
+    method TWEAK(:$!gfx = $!content.gfx) {
+        $!gfx.callback.push: self.callback;
+        self!init;
     }
 
     method !init {
@@ -84,6 +87,10 @@ class PDF::To::Cairo {
         self.Fill(:preserve);
         self.Stroke;
     }
+    method CloseStroke {
+        self.ClosePath;
+        self.Stroke;
+    }
     method SetStrokeRGB(*@) {}
     method SetFillRGB(*@) {}
     method SetStrokeCMYK(*@) {}
@@ -124,6 +131,8 @@ class PDF::To::Cairo {
         $!ctx.line_width = $lw;
     }
 
+    method SetGraphicsState($gs) { }
+
     method CurveTo(Numeric $x1, Numeric $y1, Numeric $x2, Numeric $y2, Numeric $x3, Numeric $y3) {
         my \c1 = |self!coords($x1, $y1);
         my \c2 = |self!coords($x2, $y2);
@@ -141,11 +150,15 @@ class PDF::To::Cairo {
         $!ctx.rectangle( |self!coords($x, $y), $w, - $h);
     }
 
+    method Clip {
+        $!ctx.clip;
+    }
+
     method !concat-matrix(Num(Numeric) $scale-x, Num(Numeric) $skew-x,
                            Num(Numeric) $skew-y, Num(Numeric) $scale-y,
                            Num(Numeric) $trans-x, Num(Numeric) $trans-y) {
 
-        my $transform = Cairo::cairo_matrix_t.new(
+        my $transform = Cairo::Matrix.new.init(
             :xx($scale-x), :yy($scale-y),
             :yx(-$skew-x), :xy(-$skew-y),
             :x0($trans-x), :y0(-$trans-y),
@@ -188,7 +201,6 @@ class PDF::To::Cairo {
     method !show-text($text) {
         my \text-render = $!gfx.TextRender;
 
-        my Numeric $text-rise = $!gfx.TextRise;
         $!ctx.move_to($!tx / $!hscale, $!ty - $!gfx.TextRise);
 
         given text-render {
@@ -268,14 +280,57 @@ class PDF::To::Cairo {
     }
     method EndText() { }
 
+    has Cairo::Surface %!form-cache{Any};
+    method !make-form($xobject) {
+        %!form-cache{$xobject} //= do {
+            my $gfx = $xobject.new-gfx;
+            my $renderer = self.new: :content($xobject), :$gfx;
+            $gfx.ops: $xobject.gfx.ops;
+            $renderer.surface;
+        }
+    }
+    method XObject($key) {
+        with $!gfx.resource-entry('XObject', $key) -> $xobject {
+            $xobject does PDF::Content::XObject[$xobject<Subtype>]
+                unless $xobject ~~ PDF::Content::XObject;
+            given $xobject<Subtype> {
+                when 'Form' {
+                    my $surface = self!make-form($xobject);
+
+                    $!ctx.save;
+                    $!ctx.translate(0, -$xobject.height);
+                    $!ctx.set_source_surface($surface);
+                    $!ctx.paint_with_alpha($!gfx.FillAlpha);
+                    $!ctx.restore;
+                }
+                when 'Image' {
+                    # draw stub placeholder rectangle
+                    $!ctx.save;
+                    $!ctx.new_path;
+                    $!ctx.rgba(.8,.8,.6, .5);
+                    $!ctx.rectangle(|self!coords(0, 1), 1, 1);
+                    $!ctx.fill(:preserve);
+                    $!ctx.rgba(.3,.3,.3, .5);
+                    $!ctx.line_width = 5 / sqrt($xobject.width * $xobject.height);
+                    $!ctx.stroke;
+                    $!ctx.restore;
+                }
+            }
+        }
+        else {
+            warn "unable to locate XObject in resource dictionary: $key";
+        }
+    }
+
     method BeginMarkedContent(Str) { }
     method BeginMarkedContentDict(Str, Hash) { }
     method EndMarkedContent() { }
 
-    method callback($op, *@args, :$obj) {
-        without $!gfx {$!gfx = $obj; self!init};
-        my $method = OpCode($op).key;
-        self."$method"(|@args);
+    method callback{
+        sub ($op, *@args) {
+            my $method = OpCode($op).key;
+            self."$method"(|@args);
+        }
     }
 
     our %nyi;
