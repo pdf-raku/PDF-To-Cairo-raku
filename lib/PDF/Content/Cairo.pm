@@ -1,6 +1,6 @@
 use v6;
 
-class PDF::To::Cairo {
+class PDF::Content::Cairo {
 
 # A draft renderer for PDF to PNG
 # AIM is preview output for PDF::Content generated PDF's
@@ -369,7 +369,7 @@ class PDF::To::Cairo {
 
         for 1 .. $pages -> UInt $page-num {
             my $page = $pdf.page($page-num);
-            my $feed = PDF::To::Cairo.new: :content($page), :$surface;
+            my $feed = PDF::Content::Cairo.new: :content($page), :$surface;
             $surface.show_page;
         }
         $surface.finish;

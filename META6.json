@@ -1,6 +1,6 @@
 {
     "perl"        : "6.*",
-    "name"        : "PDF::To::Cairo",
+    "name"        : "PDF::Content::Cairo",
     "version"     : "0.0.1",
     "license"     : "Artistic-2.0",
     "api"         : "PDF-1.7",
@@ -10,6 +10,6 @@
     "source-url"  : "git://github.com/p6-pdf/PDF-To-Cairo-p6.git",
     "provides"    : {
 
-        "PDF::To::Cairo"   : "lib/PDF/To/Cairo.pm"
+        "PDF::Content::Cairo"   : "lib/PDF/Content/Cairo.pm"
      }
 }
