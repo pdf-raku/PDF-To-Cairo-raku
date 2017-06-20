@@ -9,23 +9,31 @@ class PDF::Content::Cairo {
     use Color;
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin;
-    has PDF::Content::Ops $!gfx;
     use PDF::Content::Font;
     use PDF::Content::XObject;
     use PDF::Content::Util::Font;
+
+    has PDF::Content::Ops $.gfx;
     has PDF::Content::Graphics $.content is required handles <width height>;
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
-    has Cairo::Context $.ctx = Cairo::Context.new($!surface);
+    has Cairo::Context $.ctx = Cairo::Context.new: $!surface;
     has $.current-font;
     has Hash @!save;
     has Numeric $!tx = 0.0;
     has Numeric $!ty = 0.0;
     has Numeric $!hscale = 1.0;
 
-    method TWEAK(:$!gfx = $!content.gfx: :!render) {
+    submethod TWEAK(:$!gfx = $!content.gfx(:!render), Bool :$feed = True) {
         self!init;
-        $!gfx.callback.push: self.callback;
-        $!content.render($!gfx);
+        $!gfx.callback.push: self.callback
+            if $feed;
+    }
+
+    method render(|c --> Cairo::Surface) {
+        my $obj = self.new( :!feed, |c);
+        temp $obj.gfx.callback = [ $obj.callback ];
+        $obj.content.render($obj.gfx);
+        $obj.surface;
     }
 
     method !init {
@@ -283,10 +291,7 @@ class PDF::Content::Cairo {
 
     has Cairo::Surface %!form-cache{Any};
     method !make-form($xobject) {
-        %!form-cache{$xobject} //= do {
-            my $renderer = self.new: :content($xobject);
-            $renderer.surface;
-        }
+        %!form-cache{$xobject} //= self.WHAT.render: :content($xobject);
     }
     method XObject($key) {
         with $!gfx.resource-entry('XObject', $key) -> $xobject {
@@ -295,7 +300,6 @@ class PDF::Content::Cairo {
             given $xobject<Subtype> {
                 when 'Form' {
                     my $surface = self!make-form($xobject);
-
                     $!ctx.save;
                     $!ctx.translate(0, -$xobject.height);
                     $!ctx.set_source_surface($surface);
@@ -333,16 +337,24 @@ class PDF::Content::Cairo {
     }
 
     our %nyi;
-    method FALLBACK($name, *@args) { %nyi{$name} //= do {warn "can't do: $name\(@args[]\) yet";} }
+    method FALLBACK($method, *@args) {
+        if $method ~~ /^<[A..Z]>/ {
+            # assume unimplemented operator
+            %nyi{$method} //= do {warn "can't do: $method\(@args[]\) yet";}
+        }
+        else {
+            die X::Method::NotFound.new( :$method, :typename(self.^name) );
+        }
+    }
 
     multi method save-page-as('png', PDF::Content::Graphics $content, Str $png-filename) {
-        my $feed = self.new: :$content;
-        $feed.surface.write_png: $png-filename;
+        my $surface = self.render: :$content;
+        $surface.write_png: $png-filename;
     }
 
     multi method save-page-as('svg', PDF::Content::Graphics $content, Str $svg-filename) {
         my $surface = Cairo::Surface::SVG.create($svg-filename, $content.width, $content.height);
-        my $feed = self.new: :$content, :$surface;
+        my $feed = self.render: :$content, :$surface;
         $surface.finish;
     }
 

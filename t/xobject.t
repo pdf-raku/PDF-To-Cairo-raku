@@ -28,17 +28,13 @@ $page.graphics: -> $gfx {
     }
     $form.finish;
 
-    $page.graphics: {
-        .do($form, 10, 100 );
-        .MoveTo(10, 95);
-        .LineTo(160,95);
-        .Stroke; 
-    }
+    $gfx.do($form, 10, 100 );
+    $gfx.MoveTo(10, 95);
+    $gfx.LineTo(160,95);
+    $gfx.Stroke; 
 
     my $image = PDF::Content::Image.open: "t/images/crosshair-100x100.png";
-    $page.graphics: {
-        .do($image, 10, 300);
-    }
+    $gfx.do($image, 10, 300);
 
 }
 lives-ok {$feed.surface.write_png: "t/xobject.png"}, 'write_png';

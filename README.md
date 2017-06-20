@@ -1,2 +1,2 @@
-# PDF-To-Cairo-p6
+# PDF-Content-Cairo-p6
 Some experimental PDF rendering to Cairo
