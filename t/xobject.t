@@ -23,7 +23,7 @@ $page.graphics: -> $gfx {
         .Fill;
     }
     $form.text: {
-        .text-position = [10, 120];
+        .TextMove = [10, 120];
         .say: 'Hello, world!';
     }
     $form.finish;

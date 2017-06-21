@@ -2,7 +2,7 @@ use v6;
 use Test;
 use PDF::Lite;
 use PDF::Content::Cairo;
-use PDF::Content::Util::TransformMatrix;
+use PDF::Content::Util::TransformMatrix :scale, :translate, :skew, :rotate;
 
 my $pdf = PDF::Lite.new;
 my $page = $pdf.add-page;
