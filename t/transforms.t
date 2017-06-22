@@ -2,7 +2,7 @@ use v6;
 use Test;
 use PDF::Lite;
 use PDF::Content::Cairo;
-use PDF::Content::Util::TransformMatrix;
+use PDF::Content::Matrix :translate, :rotate;
 use Cairo:ver(v0.2.1..*);
 
 my $pdf = PDF::Lite.new;
@@ -21,12 +21,12 @@ is-deeply $feed.ctx.matrix, Cairo::Matrix.new.init( :xx(1), :yy(1), :y0(200) ), 
 my $translate = Cairo::Matrix.new.init( :translate, 20, -30);
 
 $gfx.Save;
-$gfx.ConcatMatrix: PDF::Content::Util::TransformMatrix::translate(20,30);
+$gfx.ConcatMatrix: translate(20,30);
 is-deeply $feed.ctx.matrix, Cairo::Matrix.new.init( :x0(20), :y0(170) ), 'translate';
 $gfx.Restore;
 
 $gfx.Save;
-$gfx.ConcatMatrix: PDF::Content::Util::TransformMatrix::rotate(pi/4);
+$gfx.ConcatMatrix: rotate(pi/4);
 my $matrix = $feed.ctx.matrix;
 given $matrix {
       is-approx .xx, 0.5.sqrt, 'rotate xx';

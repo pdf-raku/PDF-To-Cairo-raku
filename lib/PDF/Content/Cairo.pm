@@ -2,7 +2,7 @@ use v6;
 
 class PDF::Content::Cairo {
 
-# A draft renderer for PDF to PNG
+# A lightweight draft renderer for PDF to PNG or SVG
 # AIM is preview output for PDF::Content generated PDF's
 # 
     use Cairo:ver(v0.2.1..*);
@@ -14,7 +14,7 @@ class PDF::Content::Cairo {
     use PDF::Content::Util::Font;
 
     has PDF::Content::Ops $.gfx;
-    has PDF::Content::Graphics $.content is required handles <width height>;
+    has $.content is required handles <width height>;
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
     has Cairo::Context $.ctx = Cairo::Context.new: $!surface;
     has $.current-font;
@@ -31,8 +31,13 @@ class PDF::Content::Cairo {
 
     method render(|c --> Cairo::Surface) {
         my $obj = self.new( :!feed, |c);
+        my $content = $obj.content;
+        if $content.has-pre-gfx {
+            my $gfx = $content.new-gfx: :callback[ $obj.callback ];
+            $gfx.ops: $content.pre-gfx.ops;
+        }
         temp $obj.gfx.callback = [ $obj.callback ];
-        $obj.content.render($obj.gfx);
+        $content.render($obj.gfx);
         $obj.surface;
     }
 
@@ -190,7 +195,7 @@ class PDF::Content::Cairo {
             my $cairo-slant = $!current-font.ItalicAngle
                 ?? Cairo::FontSlant::FONT_SLANT_ITALIC
                 !! Cairo::FontSlant::FONT_SLANT_NORMAL;
-            $!ctx.select_font_face($!current-font.FamilyName, $cairo-weight, $cairo-slant);
+            $!ctx.select_font_face($!current-font.FamilyName, $cairo-slant, $cairo-weight);
         }
         else {
             warn "unable to locate Font in resource dictionary: $font-key";
@@ -219,7 +224,7 @@ class PDF::Content::Cairo {
             }
             when 3 { # invisible
             }
-            default { # other modoes
+            default { # other modes
                 my \add-to-path = ?(text-render == 4|5|7);
                 my \fill = ?(text-render == 0|2|4|6);
                 my \stroke = ?(text-render == 1|2|5|6);
@@ -291,12 +296,10 @@ class PDF::Content::Cairo {
 
     has Cairo::Surface %!form-cache{Any};
     method !make-form($xobject) {
-        %!form-cache{$xobject} //= self.WHAT.render: :content($xobject);
+        %!form-cache{$xobject} //= self.render: :content($xobject);
     }
     method XObject($key) {
         with $!gfx.resource-entry('XObject', $key) -> $xobject {
-            $xobject does PDF::Content::XObject[$xobject<Subtype>]
-                unless $xobject ~~ PDF::Content::XObject;
             given $xobject<Subtype> {
                 when 'Form' {
                     my $surface = self!make-form($xobject);
@@ -347,34 +350,46 @@ class PDF::Content::Cairo {
         }
     }
 
-    multi method save-page-as('png', PDF::Content::Graphics $content, Str $png-filename) {
+    multi method save-page-as(PDF::Content::Graphics $content, Str $filename where /:i '.png' $/) {
         my $surface = self.render: :$content;
-        $surface.write_png: $png-filename;
+        $surface.write_png: $filename;
     }
 
-    multi method save-page-as('svg', PDF::Content::Graphics $content, Str $svg-filename) {
-        my $surface = Cairo::Surface::SVG.create($svg-filename, $content.width, $content.height);
+    multi method save-page-as(PDF::Content::Graphics $content, Str $filename where /:i '.svg' $/) {
+        my $surface = Cairo::Surface::SVG.create($filename, $content.width, $content.height);
         my $feed = self.render: :$content, :$surface;
         $surface.finish;
     }
 
-    multi method save-as($pdf, Str $outfile where /:i '.'('png'|'svg') $/) {
+    multi method save-page-as($page, Str(Cool) $outfile where /:i '.pdf' $/) {
+        my $surface = Cairo::Surface::PDF.create($outfile, $page.width, $page.height);
+        my $feed = PDF::Content::Cairo.new: :content($page), :$surface;
+        $surface.show_page;
+        $surface.finish;
+     }
+
+    multi method save-as($pdf, Str(Cool) $outfile where /:i '.'('png'|'svg') $/) {
         my \format = $0.lc;
         my UInt $pages = $pdf.page-count;
 
         for 1 .. $pages -> UInt $page-num {
 
-            my $img_filename = $outfile.sprintf($page-num);
-            die "invalid 'sprintf' output page format: $outfile"
-                if $img_filename eq $outfile && $pages > 1;
+            my $img-filename = $outfile;
+            if $outfile.index("%").defined {
+                $img-filename = $outfile.sprintf($page-num);
+            }
+            else {
+                die "invalid 'sprintf' output page format: $outfile"
+                    if $pages > 1;
+            }
 
             my $page = $pdf.page($page-num);
-            $*ERR.print: "saving page $page-num -> {format.uc} $img_filename...\n"; 
-            $.save-page-as(format, $page, $img_filename);
+            $*ERR.print: "saving page $page-num -> {format.uc} $img-filename...\n"; 
+            $.save-page-as($page, $img-filename);
         }
     }
 
-    multi method save-as($pdf, Str $outfile where /:i '.pdf' $/) {
+    multi method save-as($pdf, Str(Cool) $outfile where /:i '.pdf' $/) {
         my $page1 = $pdf.page(1);
         my $surface = Cairo::Surface::PDF.create($outfile, $page1.width, $page1.height);
         my UInt $pages = $pdf.page-count;

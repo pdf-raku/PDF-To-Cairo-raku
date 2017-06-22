@@ -3,18 +3,18 @@ use v6;
 use PDF::Lite;
 use PDF::Content;
 use PDF::Content::Graphics;
-use PDF::To::Cairo;
+use PDF::Content::Cairo;
 
 #| reading from stdin
-multi sub output-filename('-') {"pdf-page%03d.png"}
+multi sub output-filename('-') {"pdf-page-%03d.png"}
 #| user supplied format spec
 multi sub output-filename(Str $filename where /'%'/) {$filename}
 #| generated sprintf format from input/output filename template
 multi sub output-filename(Str $infile) is default {
       my Str $ext = $infile.IO.extension;
       $ext eq ''
-      ?? $infile ~ '%03d.png'
-      !! $infile.subst(/ '.' $ext$/, '%03d.png');
+      ?? $infile ~ '-%03d.png'
+      !! $infile.subst(/ '.' $ext$/, '-%03d.png');
 }
 
 subset ImageFile of Str where /:i '.' [png|svg|pdf]/;
@@ -29,7 +29,7 @@ sub MAIN(Str $infile,            #| input PDF
 	!! $infile;
 
     my $pdf = PDF::Lite.open( $input, :$password);
-    PDF::To::Cairo.save-as($pdf, $outfile);
+    PDF::Content::Cairo.save-as($pdf, $outfile);
 }
 
 =begin pod
@@ -61,7 +61,7 @@ components in the Perl 6 ecosystem, including PDF::Content and Cairo.
 
 PDF::Lite
 PDF::Content
-PDF::To::Cairo
+PDF::Content::Cairo
 
 =head1 AUTHOR
 
