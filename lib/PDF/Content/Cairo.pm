@@ -24,8 +24,11 @@ class PDF::Content::Cairo {
     has Numeric $!ty = 0.0;
     has Numeric $!hscale = 1.0;
 
-    submethod TWEAK(:$!gfx = $!content.gfx(:!render), Bool :$feed = True) {
-        self!init;
+    submethod TWEAK(:$!gfx = $!content.gfx(:!render),
+                    Bool :$feed = True,
+                    Bool :$paint = True,
+        ) {
+        self!init: :$paint;
         $!gfx.callback.push: self.callback
             if $feed;
     }
@@ -42,11 +45,13 @@ class PDF::Content::Cairo {
         $obj.surface;
     }
 
-    method !init {
+    method !init(:$paint) {
         $!ctx.translate(0, self.height);
         $!ctx.line_width = $!gfx.LineWidth;
-        $!ctx.rgb(1.0, 1.0, 1.0);
-        $!ctx.paint;
+        if $paint {
+            $!ctx.rgb(1.0, 1.0, 1.0);
+            $!ctx.paint;
+        }
     }
 
     method !coords(Numeric \x, Numeric \y) {
@@ -250,7 +255,7 @@ class PDF::Content::Cairo {
     method !text(&stuff) {
         $!ctx.save;
         self!concat-matrix(|$!gfx.TextMatrix);
-        $!hscale = $!gfx.HorizScaling  / 100;
+        $!hscale = $!gfx.HorizScaling / 100.0;
         $!ctx.scale($!hscale, 1)
             unless $!hscale =~= 1.0;
         &stuff();
@@ -297,7 +302,7 @@ class PDF::Content::Cairo {
 
     has Cairo::Surface %!form-cache{Any};
     method !make-form($xobject) {
-        %!form-cache{$xobject} //= self.render: :content($xobject);
+        %!form-cache{$xobject} //= self.render: :content($xobject), :!paint;
     }
     method !make-image($xobject) {
         %!form-cache{$xobject} //= do {

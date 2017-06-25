@@ -22,6 +22,7 @@ my $y = 600;
 $gfx.LineWidth = 3;
 
 for [ :DeviceGray[.2], :DeviceGray[.5] ],
+    [ :DeviceGray[.75], :DeviceGray[.5] ],
     [ :DeviceRGB[.9, .1, .1,], :DeviceRGB[.1, .1, .9] ],
     [ :DeviceCMYK[.9, .1, .1, .1], :DeviceCMYK[.1, .1, .9, .5] ] {
     $gfx.FillColor = .[0];

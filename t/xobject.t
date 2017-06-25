@@ -15,7 +15,7 @@ $page.graphics: -> $gfx {
     my $font = $page.core-font( :family<Helvetica> );
     my $y = $page.MediaBox[3];
 
-    my $form = $pdf.xobject-form: :BBox[0,0,150,150];
+    my $form = $page.xobject-form: :BBox[0,0,150,150];
     $form.graphics: {
         .font = $form.core-font( :family<Times-Roma>, :weight<bold>, :style<italic> );
         .FillColor = :DeviceRGB[ .8, .9, .9];
