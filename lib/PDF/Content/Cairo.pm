@@ -12,6 +12,7 @@ class PDF::Content::Cairo {
     use PDF::Content::Font;
     use PDF::Content::XObject;
     use PDF::Content::Util::Font;
+    use PDF::Content::Image::PNG;
 
     has PDF::Content::Ops $.gfx;
     has $.content is required handles <width height>;
@@ -300,18 +301,24 @@ class PDF::Content::Cairo {
     }
     method !make-image($xobject) {
         %!form-cache{$xobject} //= do {
-            
-            # draw stub placeholder rectangle
-            my Cairo::Image $surface .= create(Cairo::FORMAT_ARGB32, $xobject.width, $xobject.height);
-            my Cairo::Context $ctx .= new: $surface;
-            $ctx.new_path;
-            $ctx.rgba(.8,.8,.6, .5);
-            $ctx.rectangle(0, 0, $xobject.width, $xobject.height);
-            $ctx.fill(:preserve);
-            $ctx.rgba(.3,.3,.3, .5);
-            $ctx.line_width = 2;
-            $ctx.stroke;
-            $surface;
+            with PDF::Content::Image::PNG.from-dict($xobject) {
+                # able to be rendered
+                Cairo::Image.create(.Buf);
+            }
+            else {
+                # draw stub placeholder rectangle
+                warn "stubbing image: {$xobject.perl}";
+                my Cairo::Image $surface .= create(Cairo::FORMAT_ARGB32, $xobject.width, $xobject.height);
+                my Cairo::Context $ctx .= new: $surface;
+                $ctx.new_path;
+                $ctx.rgba(.8,.8,.6, .5);
+                $ctx.rectangle(0, 0, $xobject.width, $xobject.height);
+                $ctx.fill(:preserve);
+                $ctx.rgba(.3,.3,.3, .5);
+                $ctx.line_width = 2;
+                $ctx.stroke;
+                $surface;
+            }
         }
     }
     method XObject($key) {
