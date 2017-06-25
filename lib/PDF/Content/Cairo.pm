@@ -298,30 +298,43 @@ class PDF::Content::Cairo {
     method !make-form($xobject) {
         %!form-cache{$xobject} //= self.render: :content($xobject);
     }
+    method !make-image($xobject) {
+        %!form-cache{$xobject} //= do {
+            
+            # draw stub placeholder rectangle
+            my Cairo::Image $surface .= create(Cairo::FORMAT_ARGB32, $xobject.width, $xobject.height);
+            my Cairo::Context $ctx .= new: $surface;
+            $ctx.new_path;
+            $ctx.rgba(.8,.8,.6, .5);
+            $ctx.rectangle(0, 0, $xobject.width, $xobject.height);
+            $ctx.fill(:preserve);
+            $ctx.rgba(.3,.3,.3, .5);
+            $ctx.line_width = 2;
+            $ctx.stroke;
+            $surface;
+        }
+    }
     method XObject($key) {
         with $!gfx.resource-entry('XObject', $key) -> $xobject {
-            given $xobject<Subtype> {
+            $!ctx.save;
+
+            my $surface = do given $xobject<Subtype> {
                 when 'Form' {
-                    my $surface = self!make-form($xobject);
-                    $!ctx.save;
-                    $!ctx.translate(0, -$xobject.height);
-                    $!ctx.set_source_surface($surface);
-                    $!ctx.paint_with_alpha($!gfx.FillAlpha);
-                    $!ctx.restore;
+                    self!make-form($xobject);
                 }
                 when 'Image' {
-                    # draw stub placeholder rectangle
-                    $!ctx.save;
-                    $!ctx.new_path;
-                    $!ctx.rgba(.8,.8,.6, .5);
-                    $!ctx.rectangle(|self!coords(0, 1), 1, 1);
-                    $!ctx.fill(:preserve);
-                    $!ctx.rgba(.3,.3,.3, .5);
-                    $!ctx.line_width = 5 / sqrt($xobject.width * $xobject.height);
-                    $!ctx.stroke;
-                    $!ctx.restore;
+                    $!ctx.scale( 1/$xobject.width, 1/$xobject.height );
+                    self!make-image($xobject);
                 }
             }
+
+            with $surface {
+                $!ctx.translate(0, -$xobject.height);
+                $!ctx.set_source_surface($_);
+                $!ctx.paint_with_alpha($!gfx.FillAlpha);
+            }
+
+            $!ctx.restore;
         }
         else {
             warn "unable to locate XObject in resource dictionary: $key";
