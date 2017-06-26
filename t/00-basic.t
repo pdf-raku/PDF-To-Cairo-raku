@@ -24,7 +24,8 @@ $gfx.LineWidth = 3;
 for [ :DeviceGray[.2], :DeviceGray[.5] ],
     [ :DeviceGray[.75], :DeviceGray[.5] ],
     [ :DeviceRGB[.9, .1, .1,], :DeviceRGB[.1, .1, .9] ],
-    [ :DeviceCMYK[.9, .1, .1, .1], :DeviceCMYK[.1, .1, .9, .5] ] {
+    [ :DeviceCMYK[.9, .1, .1, .1], :DeviceCMYK[.1, .1, .9, .5] ],
+    [ :DeviceCMYK[.0, .0, .0, .3], :DeviceCMYK[.0, .0, .0, 1.0] ] {
     $gfx.FillColor = .[0];
     $gfx.StrokeColor = .[1];
     $gfx.Rectangle($x, $y, 40, 40);

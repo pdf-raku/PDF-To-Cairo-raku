@@ -12,7 +12,7 @@ class PDF::Content::Cairo {
     use PDF::Content::Font;
     use PDF::Content::XObject;
     use PDF::Content::Util::Font;
-    use PDF::Content::Image::PNG;
+    use PDF::Content::Cairo::PNG;
 
     has PDF::Content::Ops $.gfx;
     has $.content is required handles <width height>;
@@ -26,9 +26,9 @@ class PDF::Content::Cairo {
 
     submethod TWEAK(:$!gfx = $!content.gfx(:!render),
                     Bool :$feed = True,
-                    Bool :$paint = True,
+                    Bool :$transparent = False,
         ) {
-        self!init: :$paint;
+        self!init: :$transparent;
         $!gfx.callback.push: self.callback
             if $feed;
     }
@@ -45,10 +45,10 @@ class PDF::Content::Cairo {
         $obj.surface;
     }
 
-    method !init(:$paint) {
+    method !init(:$transparent) {
         $!ctx.translate(0, self.height);
         $!ctx.line_width = $!gfx.LineWidth;
-        if $paint {
+        unless $transparent {
             $!ctx.rgb(1.0, 1.0, 1.0);
             $!ctx.paint;
         }
@@ -72,6 +72,13 @@ class PDF::Content::Cairo {
                 my Color $color .= new: :cmyk($colors);
                 my @rgb = $color.rgb.map: * / 255;
                 $!ctx.rgba( |@rgb, $alpha );
+            }
+            when 'Pattern' {
+                with $colors[0] {
+                    with $!gfx.resource-entry('Pattern', $_) -> $pattern {
+                        $!ctx.pattern: self!make-pattern($pattern);
+                    }
+                }
             }
             default {
                 warn "can't handle colorspace: $_";
@@ -117,6 +124,11 @@ class PDF::Content::Cairo {
     method SetFillCMYK(*@) {}
     method SetStrokeGray(*@) {}
     method SetFillGray(*@) {}
+    method SetStrokeColorSpace($_) {}
+    method SetFillColorSpace($_) {}
+    method SetStrokeColorN(*@) {}
+    method SetFillColorN(*@) {}
+
     method EndPath() { $!ctx.new_path }
 
     method MoveTo(Numeric $x, Numeric $y) {
@@ -302,11 +314,30 @@ class PDF::Content::Cairo {
 
     has Cairo::Surface %!form-cache{Any};
     method !make-form($xobject) {
-        %!form-cache{$xobject} //= self.render: :content($xobject), :!paint;
+        %!form-cache{$xobject} //= self.render: :content($xobject), :transparent;
+    }
+    has Cairo::Pattern::Surface %!pattern-cache{Any};
+    method !make-pattern($pattern) {
+        %!pattern-cache{$pattern} //= do {
+            # stub
+            my $image = self.render: :content($pattern), :transparent;
+            my $width = $image.width;
+            my $height = $image.height;
+            my $padded-img = Cairo::Image.create(
+                Cairo::FORMAT_ARGB32,
+                $pattern<XStep> // $width,
+                $pattern<YStep> // $height);
+            my Cairo::Context $ctx .= new($padded-img);
+            $ctx.set_source_surface($image);
+            $ctx.paint;
+            my Cairo::Pattern::Surface $patt .= create($padded-img.surface);
+            $patt.extend = Cairo::Extend::EXTEND_REPEAT;
+            $patt;
+        }
     }
     method !make-image($xobject) {
         %!form-cache{$xobject} //= do {
-            with PDF::Content::Image::PNG.from-dict($xobject) {
+            with PDF::Content::Cairo::PNG.from-dict($xobject) {
                 # able to be rendered
                 Cairo::Image.create(.Buf);
             }
