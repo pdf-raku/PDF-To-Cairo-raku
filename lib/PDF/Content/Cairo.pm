@@ -12,7 +12,7 @@ class PDF::Content::Cairo {
     use PDF::Content::Font;
     use PDF::Content::XObject;
     use PDF::Content::Util::Font;
-    use PDF::Content::Cairo::PNG;
+    use PDF::Zen;
 
     has PDF::Content::Ops $.gfx;
     has $.content is required handles <width height>;
@@ -76,7 +76,9 @@ class PDF::Content::Cairo {
             when 'Pattern' {
                 with $colors[0] {
                     with $!gfx.resource-entry('Pattern', $_) -> $pattern {
-                        $!ctx.pattern: self!make-pattern($pattern);
+                        my $img = self!make-pattern($pattern);
+                        warn :$img.perl;
+                        $!ctx.pattern: $img;
                     }
                 }
             }
@@ -316,28 +318,25 @@ class PDF::Content::Cairo {
     method !make-form($xobject) {
         %!form-cache{$xobject} //= self.render: :content($xobject), :transparent;
     }
-    has Cairo::Pattern::Surface %!pattern-cache{Any};
-    method !make-pattern($pattern) {
-        %!pattern-cache{$pattern} //= do {
-            # stub
+    need PDF::Pattern;
+##    has Cairo::Surface %!pattern-cache{Any};
+    method !make-pattern(PDF::Pattern $pattern) {
             my $image = self.render: :content($pattern), :transparent;
-            my $width = $image.width;
-            my $height = $image.height;
             my $padded-img = Cairo::Image.create(
                 Cairo::FORMAT_ARGB32,
-                $pattern<XStep> // $width,
-                $pattern<YStep> // $height);
+                $pattern<XStep> // $image.width,
+                $pattern<YStep> // $image.height);
             my Cairo::Context $ctx .= new($padded-img);
             $ctx.set_source_surface($image);
             $ctx.paint;
             my Cairo::Pattern::Surface $patt .= create($padded-img.surface);
             $patt.extend = Cairo::Extend::EXTEND_REPEAT;
             $patt;
-        }
     }
-    method !make-image($xobject) {
+    need PDF::XObject::Image;
+    method !make-image(PDF::XObject::Image $xobject) {
         %!form-cache{$xobject} //= do {
-            with PDF::Content::Cairo::PNG.from-dict($xobject) {
+            with $xobject.to-png {
                 # able to be rendered
                 Cairo::Image.create(.Buf);
             }
@@ -424,7 +423,7 @@ class PDF::Content::Cairo {
         $surface.finish;
      }
 
-    multi method save-as($pdf, Str(Cool) $outfile where /:i '.'('png'|'svg') $/) {
+    multi method save-as(PDF::Zen $pdf, Str(Cool) $outfile where /:i '.'('png'|'svg') $/) {
         my \format = $0.lc;
         my UInt $pages = $pdf.page-count;
 
@@ -445,7 +444,7 @@ class PDF::Content::Cairo {
         }
     }
 
-    multi method save-as($pdf, Str(Cool) $outfile where /:i '.pdf' $/) {
+    multi method save-as(PDF::Zen $pdf, Str(Cool) $outfile where /:i '.pdf' $/) {
         my $page1 = $pdf.page(1);
         my $surface = Cairo::Surface::PDF.create($outfile, $page1.width, $page1.height);
         my UInt $pages = $pdf.page-count;

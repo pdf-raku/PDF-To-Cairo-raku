@@ -1,6 +1,6 @@
 #!/usr/bin/env perl6
 use v6;
-use PDF::Lite;
+use PDF::Zen;
 use PDF::Content;
 use PDF::Content::Graphics;
 use PDF::Content::Cairo;
@@ -28,7 +28,7 @@ sub MAIN(Str $infile,            #| input PDF
         ?? $*IN
 	!! $infile;
 
-    my $pdf = PDF::Lite.open( $input, :$password);
+    my $pdf = PDF::Zen.open( $input, :$password);
     PDF::Content::Cairo.save-as($pdf, $outfile);
 }
 
@@ -59,7 +59,7 @@ components in the Perl 6 ecosystem, including PDF::Content and Cairo.
 
 =head1 SEE ALSO
 
-PDF::Lite
+PDF::Zen
 PDF::Content
 PDF::Content::Cairo
 
