@@ -1,6 +1,6 @@
 use v6;
 
-class PDF::Content::Cairo {
+class PDF::Render::Cairo {
 
 # A lightweight draft renderer for PDF to PNG or SVG
 # AIM is preview output for PDF::Content generated PDF's
@@ -396,7 +396,7 @@ class PDF::Content::Cairo {
 
     our %nyi;
     method FALLBACK($method, *@args) {
-        if $method ~~ /^<[A..Z]>/ {
+        if $method ~~ /^<[A..Z]>/ && $!gfx.can($_) {
             # assume unimplemented operator
             %nyi{$method} //= do {warn "can't do: $method\(@args[]\) yet";}
         }
@@ -418,7 +418,7 @@ class PDF::Content::Cairo {
 
     multi method save-page-as($page, Str(Cool) $outfile where /:i '.pdf' $/) {
         my $surface = Cairo::Surface::PDF.create($outfile, $page.width, $page.height);
-        my $feed = PDF::Content::Cairo.new: :content($page), :$surface;
+        my $feed = PDF::Render::Cairo.new: :content($page), :$surface;
         $surface.show_page;
         $surface.finish;
      }
@@ -451,7 +451,7 @@ class PDF::Content::Cairo {
 
         for 1 .. $pages -> UInt $page-num {
             my $page = $pdf.page($page-num);
-            my $feed = PDF::Content::Cairo.new: :content($page), :$surface;
+            my $feed = PDF::Render::Cairo.new: :content($page), :$surface;
             $surface.show_page;
         }
         $surface.finish;

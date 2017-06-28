@@ -1,14 +1,14 @@
 use v6;
 use Test;
 use PDF::Lite;
-use PDF::Content::Cairo;
+use PDF::Render::Cairo;
 use PDF::Content::Matrix :translate, :rotate;
 use Cairo:ver(v0.2.1..*);
 
 my $pdf = PDF::Lite.new;
 my $page = $pdf.add-page;
 $page.MediaBox = [0, 0, 150, 200];
-my $feed = PDF::Content::Cairo.new: :content($page);
+my $feed = PDF::Render::Cairo.new: :content($page);
 my $gfx = $page.gfx;
 
 $gfx.Save;

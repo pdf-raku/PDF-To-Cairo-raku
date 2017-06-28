@@ -1,7 +1,7 @@
 use v6;
 use Test;
 use PDF::Lite;
-use PDF::Content::Cairo;
+use PDF::Render::Cairo;
 use PDF::Content::Util::TransformMatrix;
 use PDF::Content::Page :PageSizes;
 use PDF::Content::Image;
@@ -10,7 +10,7 @@ use Cairo;
 my $pdf = PDF::Lite.new;
 my $page = $pdf.add-page;
 $page.MediaBox = PageSizes::Letter;
-my $feed = PDF::Content::Cairo.new: :content($page);
+my $feed = PDF::Render::Cairo.new: :content($page);
 $page.graphics: -> $gfx {
     my $font = $page.core-font( :family<Helvetica> );
     my $y = $page.MediaBox[3];
