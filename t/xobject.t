@@ -1,13 +1,13 @@
 use v6;
 use Test;
-use PDF::Lite;
+use PDF::Zen;
 use PDF::Render::Cairo;
 use PDF::Content::Util::TransformMatrix;
 use PDF::Content::Page :PageSizes;
 use PDF::Content::Image;
 use Cairo;
 
-my $pdf = PDF::Lite.new;
+my $pdf = PDF::Zen.new;
 my $page = $pdf.add-page;
 $page.MediaBox = PageSizes::Letter;
 my $feed = PDF::Render::Cairo.new: :content($page);
@@ -17,7 +17,7 @@ $page.graphics: -> $gfx {
 
     my $form = $page.xobject-form: :BBox[0,0,150,150];
     $form.graphics: {
-        .font = $form.core-font( :family<Times-Roma>, :weight<bold>, :style<italic> );
+        .font = $form.core-font( :family<Times-Roman>, :weight<bold>, :style<italic> );
         .FillColor = :DeviceRGB[ .8, .9, .9];
         .Rectangle(5,5,140,140);
         .Fill;

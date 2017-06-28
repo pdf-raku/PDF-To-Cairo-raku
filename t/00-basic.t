@@ -1,10 +1,10 @@
 use v6;
 use Test;
-use PDF::Lite;
+use PDF::Zen;
 use PDF::Render::Cairo;
 use PDF::Content::Matrix :scale, :translate, :skew, :rotate;
 
-my $pdf = PDF::Lite.new;
+my $pdf = PDF::Zen.new;
 my $page = $pdf.add-page;
 my $feed = PDF::Render::Cairo.new: :content($page);
 my $gfx = $page.gfx;
