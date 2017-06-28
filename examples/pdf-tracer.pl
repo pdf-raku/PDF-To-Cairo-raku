@@ -1,7 +1,7 @@
 #!/usr/bin/env perl6
 use v6.c;
-use PDF::Lite;
-use PDF::Content::Cairo;
+use PDF::Zen;
+use PDF::Render::Cairo;
 use PDF::Content::Ops :OpCode;
 use GTK::Simple;
 use GTK::Simple::DrawingArea;
@@ -9,9 +9,9 @@ use Cairo;
 
 class PDF::Tracer {
 
-    has PDF::Lite $.pdf is required;
+    has PDF::Zen $.pdf is required;
 
-    my class Renderer is PDF::Content::Cairo {
+    my class Renderer is PDF::Render::Cairo {
         has Numeric $.delay = 1.0;
         my uint $counter = 0;
         method callback{
@@ -42,7 +42,6 @@ class PDF::Tracer {
         $app.run;
     }
 
-
 }
 
 sub MAIN(Str $infile,            #| input PDF
@@ -54,7 +53,7 @@ sub MAIN(Str $infile,            #| input PDF
         ?? $*IN
 	!! $infile;
 
-    my $pdf = PDF::Lite.open( $input, :$password);
+    my $pdf = PDF::Zen.open( $input, :$password);
     my $tracer = PDF::Tracer.new: :$pdf;
     $tracer.trace-page($infile, $page);
 }
