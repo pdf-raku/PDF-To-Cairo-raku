@@ -3,7 +3,7 @@ use v6;
 use PDF::Zen;
 use PDF::Content;
 use PDF::Content::Graphics;
-use PDF::Content::Cairo;
+use PDF::Render::Cairo;
 
 sub MAIN(
     Str $directory = '.',         #| directory to be scanned for PDFS
@@ -16,6 +16,7 @@ sub MAIN(
     mkdir $preview-dir;
 
     for $directory.IO.dir( :test(/:i '.pdf' $/) ) -> $input {
+warn $input;
         my $pdf = PDF::Zen.open( $input, :$password);
         my $png-out = $preview-dir.IO.add: $input.IO.basename.subst(/:i '.pdf' $/, '-%03d.png');
 
@@ -29,7 +30,7 @@ sub MAIN(
                 .Rectangle: |$content.MediaBox;
                 .Stroke;
             };
-            my $surface = PDF::Content::Cairo.render: :$content;
+            my $surface = PDF::Render::Cairo.render: :$content;
 
             my $filename = $png-out.sprintf($page-num);
             $*ERR.print: "saving $input page $page-num -> $filename...\n"; 
@@ -67,7 +68,7 @@ components in the Perl 6 ecosystem, including PDF::Content and Cairo.
 
 PDF::Zen
 PDF::Content
-PDF::Content::Cairo
+PDF::Render::Cairo
 
 =head1 AUTHOR
 

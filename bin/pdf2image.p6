@@ -3,7 +3,7 @@ use v6;
 use PDF::Zen;
 use PDF::Content;
 use PDF::Content::Graphics;
-use PDF::Content::Cairo;
+use PDF::Render::Cairo;
 
 #| reading from stdin
 multi sub output-filename('-') {"pdf-page-%03d.png"}
@@ -29,7 +29,7 @@ sub MAIN(Str $infile,            #| input PDF
 	!! $infile;
 
     my $pdf = PDF::Zen.open( $input, :$password);
-    PDF::Content::Cairo.save-as($pdf, $outfile);
+    PDF::Render::Cairo.save-as($pdf, $outfile);
 }
 
 =begin pod
@@ -61,7 +61,7 @@ components in the Perl 6 ecosystem, including PDF::Content and Cairo.
 
 PDF::Zen
 PDF::Content
-PDF::Content::Cairo
+PDF::Render::Cairo
 
 =head1 AUTHOR
 

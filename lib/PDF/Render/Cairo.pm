@@ -77,7 +77,6 @@ class PDF::Render::Cairo {
                 with $colors[0] {
                     with $!gfx.resource-entry('Pattern', $_) -> $pattern {
                         my $img = self!make-pattern($pattern);
-                        warn :$img.perl;
                         $!ctx.pattern: $img;
                     }
                 }
@@ -396,7 +395,7 @@ class PDF::Render::Cairo {
 
     our %nyi;
     method FALLBACK($method, *@args) {
-        if $method ~~ /^<[A..Z]>/ && $!gfx.can($_) {
+        if $method ~~ /^<[A..Z]>/ {
             # assume unimplemented operator
             %nyi{$method} //= do {warn "can't do: $method\(@args[]\) yet";}
         }
