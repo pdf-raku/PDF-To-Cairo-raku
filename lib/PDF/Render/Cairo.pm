@@ -3,16 +3,15 @@ use v6;
 class PDF::Render::Cairo {
 
 # A lightweight draft renderer for PDF to PNG or SVG
-# AIM is preview output for PDF::Content generated PDF's
+# Aim is preview output for PDF::Content generated PDF's
 # 
+    use PDF::Zen;
+    use PDF::XObject::Image;
     use Cairo:ver(v0.2.1..*);
     use Color;
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin;
-    use PDF::Content::Font;
-    use PDF::Content::XObject;
     use PDF::Content::Util::Font;
-    use PDF::Zen;
 
     has PDF::Content::Ops $.gfx;
     has $.content is required handles <width height>;
@@ -202,24 +201,24 @@ class PDF::Render::Cairo {
     method ConcatMatrix(*@matrix) {
         self!concat-matrix(|@matrix);
     }
-    method BeginText() { }
-    has %!font-cache;
+    method BeginText() { $!tx = 0.0; $!ty = 0.0; }
+    has %!font-cache{Any};
     method SetFont($font-key, $font-size) {
         $!ctx.set_font_size($font-size);
         with $!gfx.resource-entry('Font', $font-key) {
-            $!current-font = %!font-cache{$font-key} //= PDF::Content::Font.from-dict($_);
+            $!current-font = %!font-cache{$font-key} //= .font-obj;
             my $cairo-weight = $!current-font.Weight eq 'Bold'
-                ?? Cairo::FontWeight::FONT_WEIGHT_BOLD
-                !! Cairo::FontWeight::FONT_WEIGHT_NORMAL;
+                ?? Cairo::FONT_WEIGHT_BOLD
+                !! Cairo::FONT_WEIGHT_NORMAL;
             my $cairo-slant = $!current-font.ItalicAngle
-                ?? Cairo::FontSlant::FONT_SLANT_ITALIC
-                !! Cairo::FontSlant::FONT_SLANT_NORMAL;
+                ?? Cairo::FONT_SLANT_ITALIC
+                !! Cairo::FONT_SLANT_NORMAL;
             $!ctx.select_font_face($!current-font.FamilyName, $cairo-slant, $cairo-weight);
         }
         else {
             warn "unable to locate Font in resource dictionary: $font-key";
             $!current-font = PDF::Content::Util::Font.core-font('courier');
-            $!ctx.select_font_face('courier', Cairo::FontWeight::FONT_WEIGHT_NORMAL, Cairo::FontSlant::FONT_SLANT_NORMAL);
+            $!ctx.select_font_face('courier', Cairo::FONT_WEIGHT_NORMAL, Cairo::FONT_SLANT_NORMAL);
         }
     }
     method SetTextMatrix(*@) {
@@ -311,7 +310,7 @@ class PDF::Render::Cairo {
     method MoveSetShowText(Numeric, Numeric, $text-encoded) {
         self.MoveShowText($text-encoded);
     }
-    method EndText() { }
+    method EndText()  { $!tx = 0.0; $!ty = 0.0; }
 
     has Cairo::Surface %!form-cache{Any};
     method !make-form($xobject) {
@@ -332,7 +331,6 @@ class PDF::Render::Cairo {
             $patt.extend = Cairo::Extend::EXTEND_REPEAT;
             $patt;
     }
-    need PDF::XObject::Image;
     method !make-image(PDF::XObject::Image $xobject) {
         %!form-cache{$xobject} //= do {
             with $xobject.to-png {
