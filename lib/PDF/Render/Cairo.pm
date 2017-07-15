@@ -141,17 +141,17 @@ class PDF::Render::Cairo {
 
     method SetLineCap(UInt $lc) {
         $!ctx.line_cap = do given $lc {
-            when ButtCaps   { Cairo::LineCap::LINE_CAP_BUTT }
-            when RoundCaps  { Cairo::LineCap::LINE_CAP_ROUND }
-            when SquareCaps { Cairo::LineCap::LINE_CAP_SQUARE }
+            when ButtCaps   { Cairo::LINE_CAP_BUTT }
+            when RoundCaps  { Cairo::LINE_CAP_ROUND }
+            when SquareCaps { Cairo::LINE_CAP_SQUARE }
         }
     }
 
     method SetLineJoin(UInt $lc) {
         $!ctx.line_join = do given $lc {
-            when MiterJoin  { Cairo::LineJoin::LINE_JOIN_MITER }
-            when RoundJoin  { Cairo::LineJoin::LINE_JOIN_ROUND }
-            when BevelJoin  { Cairo::LineJoin::LINE_JOIN_BEVEL }
+            when MiterJoin  { Cairo::LINE_JOIN_MITER }
+            when RoundJoin  { Cairo::LINE_JOIN_ROUND }
+            when BevelJoin  { Cairo::LINE_JOIN_BEVEL }
         }
     }
 
