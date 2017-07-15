@@ -2,7 +2,6 @@ use v6;
 use Test;
 use PDF::Zen;
 use PDF::Render::Cairo;
-use PDF::Content::Util::TransformMatrix;
 use PDF::Content::Page :PageSizes;
 use PDF::Content::Image;
 use Cairo;
