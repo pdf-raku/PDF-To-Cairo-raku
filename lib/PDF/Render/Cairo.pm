@@ -7,7 +7,7 @@ class PDF::Render::Cairo {
 # 
     use PDF::Zen;
     use PDF::XObject::Image;
-    use Cairo:ver(v0.2.1..*);
+    use Cairo:ver(v0.2.1+);
     use Color;
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin;

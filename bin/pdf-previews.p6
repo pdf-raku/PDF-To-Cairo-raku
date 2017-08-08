@@ -1,8 +1,6 @@
 #!/usr/bin/env perl6
 use v6;
 use PDF::Zen;
-use PDF::Content;
-use PDF::Content::Graphics;
 use PDF::Render::Cairo;
 
 sub MAIN(
