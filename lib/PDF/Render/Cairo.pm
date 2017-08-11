@@ -118,6 +118,11 @@ class PDF::Render::Cairo {
         self.ClosePath;
         self.Stroke;
     }
+    method CloseFillStroke {
+        self.ClosePath;
+        self.Fill(:preserve);
+        self.Stroke;
+    }
     method SetStrokeRGB(*@) {}
     method SetFillRGB(*@) {}
     method SetStrokeCMYK(*@) {}
@@ -186,16 +191,19 @@ class PDF::Render::Cairo {
         $!ctx.clip;
     }
 
-    method !concat-matrix(Num(Numeric) $scale-x, Num(Numeric) $skew-x,
-                           Num(Numeric) $skew-y, Num(Numeric) $scale-y,
-                           Num(Numeric) $trans-x, Num(Numeric) $trans-y) {
+    sub matrix-to-cairo(Num(Numeric) $scale-x, Num(Numeric) $skew-x,
+                          Num(Numeric) $skew-y,  Num(Numeric) $scale-y,
+                          Num(Numeric) $trans-x, Num(Numeric) $trans-y) {
 
-        my $transform = Cairo::Matrix.new.init(
+       Cairo::Matrix.new.init(
             :xx($scale-x), :yy($scale-y),
             :yx(-$skew-x), :xy(-$skew-y),
             :x0($trans-x), :y0(-$trans-y),
             );
+    }
 
+    method !concat-matrix(*@matrix) {
+        my $transform = matrix-to-cairo(|@matrix);
         $!ctx.transform( $transform );
     }
     method ConcatMatrix(*@matrix) {
@@ -299,7 +307,8 @@ class PDF::Render::Cairo {
         $!tx = 0.0;
         $!ty = 0.0;
     }
-    method TextMoveSet($!tx, Numeric) {
+    method TextMoveSet(Numeric, Numeric) {
+        $!tx = 0.0;
         $!ty = 0.0;
     }
     method MoveShowText($text-encoded) {
@@ -319,17 +328,19 @@ class PDF::Render::Cairo {
     need PDF::Pattern;
 ##    has Cairo::Surface %!pattern-cache{Any};
     method !make-pattern(PDF::Pattern $pattern) {
-            my $image = self.render: :content($pattern), :transparent;
-            my $padded-img = Cairo::Image.create(
-                Cairo::FORMAT_ARGB32,
-                $pattern<XStep> // $image.width,
-                $pattern<YStep> // $image.height);
-            my Cairo::Context $ctx .= new($padded-img);
-            $ctx.set_source_surface($image);
-            $ctx.paint;
-            my Cairo::Pattern::Surface $patt .= create($padded-img.surface);
-            $patt.extend = Cairo::Extend::EXTEND_REPEAT;
-            $patt;
+        my $image = self.render: :content($pattern), :transparent;
+        my $padded-img = Cairo::Image.create(
+            Cairo::FORMAT_ARGB32,
+            $pattern<XStep> // $image.width,
+            $pattern<YStep> // $image.height);
+        my Cairo::Context $ctx .= new($padded-img);
+        $ctx.set_source_surface($image);
+        $ctx.paint;
+        my Cairo::Pattern::Surface $patt .= create($padded-img.surface);
+        $patt.extend = Cairo::Extend::EXTEND_REPEAT;
+        $patt.matrix = matrix-to-cairo(|$_).invert
+            with $pattern<Matrix>;
+        $patt;
     }
     method !make-image(PDF::XObject::Image $xobject) {
         %!form-cache{$xobject} //= do {

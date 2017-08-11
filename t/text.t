@@ -47,7 +47,6 @@ $page.graphics: -> $gfx {
         .TextRise = -3;
         .ShowText("fall.");
         .TextRise = 0;
-
     }
 
     $page.graphics: {
