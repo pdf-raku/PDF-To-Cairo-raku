@@ -10,7 +10,7 @@ class PDF::Render::Cairo {
     use Cairo:ver(v0.2.1+);
     use Color;
     use PDF::Content::Graphics;
-    use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin;
+    use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Content::Util::Font;
 
     has PDF::Content::Ops $.gfx;
@@ -244,27 +244,27 @@ class PDF::Render::Cairo {
         $!ctx.move_to($!tx / $!hscale, $!ty - $!gfx.TextRise);
 
         given text-render {
-            when 0 { # normal
+            when FillText {
                 self!set-fill-color;
                 $!ctx.show_text($text);
             }
-            when 3 { # invisible
+            when InvisableText {
             }
             default { # other modes
-                my \add-to-path = ?(text-render == 4|5|7);
-                my \fill = ?(text-render == 0|2|4|6);
-                my \stroke = ?(text-render == 1|2|5|6);
+                my \fill = ?(text-render == FillText|FillOutlineText|FillClipText|FillOutlineClipText);
+                my \stroke = ?(text-render == OutlineText|FillOutlineText|OutlineClipText|FillOutlineClipText);
+                my \clip = ?(text-render == FillClipText|OutlineClipText|ClipText);
 
                 $!ctx.text_path($text);
 
                 if fill {
                     self!set-fill-color;
-                    $!ctx.fill: :preserve(stroke||add-to-path);
+                    $!ctx.fill: :preserve(stroke||clip);
                 }
 
                 if stroke {
                     self!set-stroke-color;
-                    $!ctx.stroke: :preserve(add-to-path);
+                    $!ctx.stroke: :preserve(clip);
                 }
            }
         }
