@@ -16,16 +16,16 @@ $page.graphics: -> $gfx {
     $page.text: {
         .set-font($font, 10);
         isa-ok $feed.current-font, 'Font::Metrics::helvetica', 'current-font';
-        .TextMove = [50, $y -= 20];
+        .text-position = [50, $y -= 20];
         .print('Hello World!');
-        .TextMove = [10, $y -= 20];
+        .text-position = [10, $y -= 20];
         my $text = $['The', -500, 'long', -500, 'and', -200, 'short.'];
         .ShowSpaceText($text);
         .set-font($font, 15);
-        .TextMove = [10, $y -= 20];
+        .text-position = [10, $y -= 20];
         .ShowSpaceText($text);
 
-        .TextMove = [10, $y -= 20];
+        .text-position = [10, $y -= 20];
 
         .SetTextLeading(10);
         .ShowText("this ");
@@ -37,21 +37,23 @@ $page.graphics: -> $gfx {
         .ShowText("descended+indented text");
         .MoveShowText("move-show-text");
  
-        .TextMove = [10, $y -= 55];
+        .text-position = [10, $y -= 55];
 
         .ShowText("text ");
+
         .TextRise = 3;
         .ShowText("rise ");
+
         .TextRise = 0;
         .ShowText("and ");
+
         .TextRise = -3;
         .ShowText("fall.");
-        .TextRise = 0;
     }
 
     $page.graphics: {
         $page.text: {
-            .TextMove = [10, $y -= 40];
+            .text-position = [10, $y -= 40];
             .set-font($font, 32);
             .FillColor = :DeviceRGB[.7, .2, .2];
             .StrokeColor = :DeviceRGB[.2, .7, .7];
@@ -63,7 +65,7 @@ $page.graphics: -> $gfx {
     }
 
     $page.text: {
-        .TextMove = [10, $y -= 30];
+        .text-position = [10, $y -= 30];
 
         for 100, 75, 150 -> $hs {
             .HorizScaling = $hs;
