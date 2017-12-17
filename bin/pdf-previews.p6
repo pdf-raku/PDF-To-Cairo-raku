@@ -1,6 +1,6 @@
 #!/usr/bin/env perl6
 use v6;
-use PDF::Zen;
+use PDF::Class;
 use PDF::Render::Cairo;
 
 sub MAIN(
@@ -15,7 +15,7 @@ sub MAIN(
 
     for $directory.IO.dir( :test(/:i '.pdf' $/) ) -> $input {
 warn $input;
-        my $pdf = PDF::Zen.open( $input, :$password);
+        my $pdf = PDF::Class.open( $input, :$password);
         my $png-out = $preview-dir.IO.add: $input.IO.basename.subst(/:i '.pdf' $/, '-%03d.png');
 
         my UInt $pages = $pdf.page-count;
@@ -64,7 +64,7 @@ components in the Perl 6 ecosystem, including PDF::Content and Cairo.
 
 =head1 SEE ALSO
 
-PDF::Zen
+PDF::Class
 PDF::Content
 PDF::Render::Cairo
 

@@ -5,7 +5,7 @@ class PDF::Render::Cairo {
 # A lightweight draft renderer for PDF to PNG or SVG
 # Aim is preview output for PDF::Content generated PDF's
 # 
-    use PDF::Zen;
+    use PDF::Class;
     use PDF::XObject::Image;
     use Cairo:ver(v0.2.1+);
     use Color;
@@ -431,7 +431,7 @@ class PDF::Render::Cairo {
         $surface.finish;
      }
 
-    multi method save-as(PDF::Zen $pdf, Str(Cool) $outfile where /:i '.'('png'|'svg') $/) {
+    multi method save-as(PDF::Class $pdf, Str(Cool) $outfile where /:i '.'('png'|'svg') $/) {
         my \format = $0.lc;
         my UInt $pages = $pdf.page-count;
 
@@ -452,7 +452,7 @@ class PDF::Render::Cairo {
         }
     }
 
-    multi method save-as(PDF::Zen $pdf, Str(Cool) $outfile where /:i '.pdf' $/) {
+    multi method save-as(PDF::Class $pdf, Str(Cool) $outfile where /:i '.pdf' $/) {
         my $page1 = $pdf.page(1);
         my $surface = Cairo::Surface::PDF.create($outfile, $page1.width, $page1.height);
         my UInt $pages = $pdf.page-count;

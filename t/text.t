@@ -1,11 +1,11 @@
 use v6;
 use Test;
-use PDF::Zen;
+use PDF::Class;
 use PDF::Render::Cairo;
 use PDF::Content::Page :PageSizes;
 use Cairo;
 
-my $pdf = PDF::Zen.new;
+my $pdf = PDF::Class.new;
 my $page = $pdf.add-page;
 $page.MediaBox = PageSizes::Letter;
 my $feed = PDF::Render::Cairo.new: :content($page);
