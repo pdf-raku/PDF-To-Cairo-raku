@@ -4,20 +4,21 @@ class PDF::Render::Cairo {
 
 # A lightweight draft renderer for PDF to PNG or SVG
 # Aim is preview output for PDF::Content generated PDF's
-# 
+#
     use PDF::Class;
     use PDF::XObject::Image;
     use Cairo:ver(v0.2.1+);
     use Color;
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
-    use PDF::Content::Util::Font;
+    use PDF::Render::Cairo::FontLoader;
 
     has PDF::Content::Ops $.gfx;
     has $.content is required handles <width height>;
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
     has Cairo::Context $.ctx = Cairo::Context.new: $!surface;
-    has $.current-font;
+    has List $.current-font;
+    method current-font { $!current-font[0] }
     has Hash @!save;
     has Numeric $!tx = 0.0;
     has Numeric $!ty = 0.0;
@@ -75,8 +76,16 @@ class PDF::Render::Cairo {
             when 'Pattern' {
                 with $colors[0] {
                     with $!gfx.resource-entry('Pattern', $_) -> $pattern {
-                        my $img = self!make-pattern($pattern);
-                        $!ctx.pattern: $img;
+                        given $pattern.PatternType {
+                            when 1 { # Tiling
+                                my $img = self!make-tiling-pattern($pattern);
+                                $!ctx.pattern: $img;
+                            }
+                            when 2 { # Shading
+                                warn "can't do type-2 patterns (Shading) yet";
+                                Mu;
+                            }
+                        }
                     }
                 }
             }
@@ -106,7 +115,7 @@ class PDF::Render::Cairo {
         self!set-stroke-color;
         $!ctx.stroke;
     }
-    method Fill(:$preserve=False)    {
+    method Fill(:$preserve=False) {
         self!set-fill-color;
         $!ctx.fill(:$preserve);
     }
@@ -122,6 +131,21 @@ class PDF::Render::Cairo {
         self.ClosePath;
         self.Fill(:preserve);
         self.Stroke;
+    }
+    method EOFill {
+        $!ctx.fill_rule = Cairo::FILL_RULE_EVEN_ODD;
+        self.Fill;
+        $!ctx.fill_rule = Cairo::FILL_RULE_WINDING;
+    }
+    method EOFillStroke {
+        $!ctx.fill_rule = Cairo::FILL_RULE_EVEN_ODD;
+        self.FillStroke;
+        $!ctx.fill_rule = Cairo::FILL_RULE_WINDING;
+    }
+    method CloseEOFillStroke {
+        $!ctx.fill_rule = Cairo::FILL_RULE_EVEN_ODD;
+        self.CloseFillStroke;
+        $!ctx.fill_rule = Cairo::FILL_RULE_WINDING;
     }
     method SetStrokeRGB(*@) {}
     method SetFillRGB(*@) {}
@@ -210,22 +234,23 @@ class PDF::Render::Cairo {
         self!concat-matrix(|@matrix);
     }
     method BeginText() { $!tx = 0.0; $!ty = 0.0; }
-    has %!font-cache{Any};
+    has %!font-cache;
     method SetFont($font-key, $font-size) {
         $!ctx.set_font_size($font-size);
         with $!gfx.resource-entry('Font', $font-key) {
-            $!current-font = %!font-cache{$font-key} //= .font-obj;
-            my $cairo-weight = $!current-font.Weight eq 'Bold'
-                ?? Cairo::FONT_WEIGHT_BOLD
-                !! Cairo::FONT_WEIGHT_NORMAL;
-            my $cairo-slant = $!current-font.ItalicAngle
-                ?? Cairo::FONT_SLANT_ITALIC
-                !! Cairo::FONT_SLANT_NORMAL;
-            $!ctx.select_font_face($!current-font.FamilyName, $cairo-slant, $cairo-weight);
+            $!current-font = %!font-cache{$font-key} //= do {
+                my $font-obj = PDF::Render::Cario::FontLoader.load-font: :dict($_);
+                my $ft-face = $font-obj.face.struct;
+                my Cairo::Font $cairo-font .= create(
+                    $ft-face, :free-type,
+                );
+                [$font-obj, $cairo-font]
+            }
+            $!ctx.set_font_face($!current-font[1]);
         }
         else {
             warn "unable to locate Font in resource dictionary: $font-key";
-            $!current-font = PDF::Content::Util::Font.core-font('courier');
+            $!current-font = [PDF::Content::Util::Font.core-font('courier'), ];
             $!ctx.select_font_face('courier', Cairo::FONT_WEIGHT_NORMAL, Cairo::FONT_SLANT_NORMAL);
         }
     }
@@ -284,7 +309,7 @@ class PDF::Render::Cairo {
 
     method ShowText($text-encoded) {
         self!text: {
-            self!show-text: $!current-font.decode($text-encoded, :str);
+            self!show-text: $.current-font.decode($text-encoded, :str);
         }
     }
     method ShowSpaceText(List $text) {
@@ -292,7 +317,7 @@ class PDF::Render::Cairo {
             my Numeric $font-size = $!gfx.Font[1];
             for $text.list {
                 when Str {
-                    self!show-text: $!current-font.decode($_, :str);
+                    self!show-text: $.current-font.decode($_, :str);
                 }
                 when Numeric {
                     $!tx -= $_ * $font-size / 1000;
@@ -325,9 +350,9 @@ class PDF::Render::Cairo {
     method !make-form($xobject) {
         %!form-cache{$xobject} //= self.render: :content($xobject), :transparent;
     }
-    need PDF::Pattern;
+    need PDF::Pattern::Tiling;
 ##    has Cairo::Surface %!pattern-cache{Any};
-    method !make-pattern(PDF::Pattern $pattern) {
+    method !make-tiling-pattern(PDF::Pattern::Tiling $pattern) {
         my $image = self.render: :content($pattern), :transparent;
         my $padded-img = Cairo::Image.create(
             Cairo::FORMAT_ARGB32,
@@ -344,7 +369,7 @@ class PDF::Render::Cairo {
     }
     method !make-image(PDF::XObject::Image $xobject) {
         %!form-cache{$xobject} //= do {
-            with $xobject.to-png {
+            with try $xobject.to-png {
                 # able to be rendered
                 Cairo::Image.create(.Buf);
             }

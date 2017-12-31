@@ -15,7 +15,7 @@ $page.graphics: -> $gfx {
 
     $page.text: {
         .set-font($font, 10);
-        isa-ok $feed.current-font, 'Font::Metrics::helvetica', 'current-font';
+        isa-ok $feed.current-font, (require ::('PDF::Font::Loader::Type1')), 'current-font';
         .text-position = [50, $y -= 20];
         .print('Hello World!');
         .text-position = [10, $y -= 20];
