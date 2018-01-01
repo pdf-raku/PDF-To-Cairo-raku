@@ -68,8 +68,8 @@ class PDF::Render::Cairo::FontLoader {
         else {
             # no font descriptor. assume core font
             my $face = $dict.BaseFont // 'courier';
-            %opt<weight> = 'bold' if $face ~~ s/ ['-'|',']? bold //;
-            %opt<slant> = $0.lc if $face ~~ s/ ['-'|',']? (italic|oblique) //;
+            %opt<weight> = 'bold' if $face ~~ s/:i ['-'|',']? bold //;
+            %opt<slant> = $0.lc if $face ~~ s/:i ['-'|',']? (italic|oblique) //;
             %opt<name> = $face;
             %opt<enc> //= do given $face {
                 when /:i ^[ZapfDingbats|WebDings]/ {'zapf'}
