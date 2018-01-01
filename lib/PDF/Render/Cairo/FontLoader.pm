@@ -1,43 +1,41 @@
-class PDF::Render::Cario::FontLoader {
+class PDF::Render::Cairo::FontLoader {
     use PDF::Font::Loader;
     use PDF::DAO::Dict;
     use PDF::Font;
+    use PDF::Font::Type0;
     use PDF::Encoding;
 
     method !base-enc($_, :$dict!) {
         when 'Identity-H'       {'identity-h' }
         when 'WinAnsiEncoding'  { 'win' }
         when 'MacRomanEncoding' { 'mac' }
-        default {
-            Mu
-        }
+        default { Mu }
     }
 
-    method load-font(PDF::Font :$dict!, |c) {
+    method load-font(PDF::Font :$dict! is copy, |c) {
         use PDF::Font::Loader::Enc::CMap;
-        my $enc;
         my %opt;
 
-        with $dict<ToUnicode> -> $cmap {
-            $enc = PDF::Font::Loader::Enc::CMap.new: :$cmap;
-        }
-        else {
-            $enc = do with $dict<Encoding> {
-                when PDF::Encoding {
-                    %opt<differences> = $_ with .Differences;
-                    self!base-enc(.<BaseEncoding>, :$dict);
-                }
-                default { self!base-enc($_, :$dict); }
+        %opt<enc> = do with $dict<Encoding> {
+            when PDF::Encoding {
+                %opt<differences> = $_ with .Differences;
+                self!base-enc(.<BaseEncoding>, :$dict);
             }
+            default { self!base-enc($_, :$dict); }
         }
 
-        %opt<enc> = $_ with $enc;
+        %opt<enc> //= PDF::Font::Loader::Enc::CMap.new: :cmap($_)
+            with $dict<ToUnicode>;
+
         %opt<first-char>  = $_ with $dict<FirstChar>;
         %opt<last-char>   = $_ with $dict<LastChar>;
         %opt<widths>      = $_ with $dict<Widths>; # todo: handle in PDF::Font::Loader
 
         constant SymbolicFlag = 1 +< 5;
         constant ItalicFlag = 1 +< 6;
+
+        $dict = $dict.DescendantFonts[0]
+            if $dict ~~ PDF::Font::Type0;
 
         with $dict<FontDescriptor> {
             # embedded font
@@ -55,7 +53,10 @@ class PDF::Render::Cario::FontLoader {
                 }
             }
             with .FontFile // .FontFile2 // .FontFile3 {
-                %opt<font-stream> = .decoded;
+                my $font-stream = .decoded;
+                $font-stream = $font-stream.encode("latin-1")
+                    unless $font-stream ~~ Blob;
+                %opt<font-stream> = $font-stream;
             }
 
             # See [PDF 32000 Table 114 - Entries in an encoding dictionary]
@@ -66,12 +67,15 @@ class PDF::Render::Cario::FontLoader {
         }
         else {
             # no font descriptor. assume core font
-            %opt<enc> //= do given $dict.BaseFont {
+            my $face = $dict.BaseFont // 'courier';
+            %opt<weight> = 'bold' if $face ~~ s/ ['-'|',']? bold //;
+            %opt<slant> = $0.lc if $face ~~ s/ ['-'|',']? (italic|oblique) //;
+            %opt<name> = $face;
+            %opt<enc> //= do given $face {
                 when /:i ^[ZapfDingbats|WebDings]/ {'zapf'}
                 when /:i ^[Symbol]/ {'sym'}
-                default {'identity'}
+                default {'std'}
             }
-            %opt<name> = $dict.BaseFont // 'courier';
         }
         PDF::Font::Loader.load-font( |%opt );
     }

@@ -239,7 +239,7 @@ class PDF::Render::Cairo {
         $!ctx.set_font_size($font-size);
         with $!gfx.resource-entry('Font', $font-key) {
             $!current-font = %!font-cache{$font-key} //= do {
-                my $font-obj = PDF::Render::Cario::FontLoader.load-font: :dict($_);
+                my $font-obj = PDF::Render::Cairo::FontLoader.load-font: :dict($_);
                 my $ft-face = $font-obj.face.struct;
                 my Cairo::Font $cairo-font .= create(
                     $ft-face, :free-type,
@@ -359,7 +359,7 @@ class PDF::Render::Cairo {
             $pattern<XStep> // $image.width,
             $pattern<YStep> // $image.height);
         my Cairo::Context $ctx .= new($padded-img);
-        $ctx.set_source_surface($image);
+        $ctx.set_source_surface($image, 0, 0);
         $ctx.paint;
         my Cairo::Pattern::Surface $patt .= create($padded-img.surface);
         $patt.extend = Cairo::Extend::EXTEND_REPEAT;
@@ -405,7 +405,7 @@ class PDF::Render::Cairo {
 
             with $surface {
                 $!ctx.translate(0, -$xobject.height);
-                $!ctx.set_source_surface($_);
+                $!ctx.set_source_surface($_, 0, 0);
                 $!ctx.paint_with_alpha($!gfx.FillAlpha);
             }
 
