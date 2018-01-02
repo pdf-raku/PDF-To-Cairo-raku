@@ -369,24 +369,28 @@ class PDF::Render::Cairo {
     }
     method !make-image(PDF::XObject::Image $xobject) {
         %!form-cache{$xobject} //= do {
-            with try $xobject.to-png {
-                # able to be rendered
-                Cairo::Image.create(.Buf);
+            my Cairo::Image $surface;
+            try {
+                CATCH {
+                    when X::NYI {
+                        # draw stub placeholder rectangle
+                        warn "stubbing image: {$xobject.perl}";
+                        $surface .= create(Cairo::FORMAT_ARGB32, $xobject.width, $xobject.height);
+                        my Cairo::Context $ctx .= new: $surface;
+                        $ctx.new_path;
+                        $ctx.rgba(.8,.8,.6, .5);
+                        $ctx.rectangle(0, 0, $xobject.width, $xobject.height);
+                        $ctx.fill(:preserve);
+                        $ctx.rgba(.3,.3,.3, .5);
+                        $ctx.line_width = 2;
+                        $ctx.stroke;
+                        $surface;
+                    }
+                }
+
+                $surface = Cairo::Image.create($xobject.to-png.Buf);
             }
-            else {
-                # draw stub placeholder rectangle
-                warn "stubbing image: {$xobject.perl}";
-                my Cairo::Image $surface .= create(Cairo::FORMAT_ARGB32, $xobject.width, $xobject.height);
-                my Cairo::Context $ctx .= new: $surface;
-                $ctx.new_path;
-                $ctx.rgba(.8,.8,.6, .5);
-                $ctx.rectangle(0, 0, $xobject.width, $xobject.height);
-                $ctx.fill(:preserve);
-                $ctx.rgba(.3,.3,.3, .5);
-                $ctx.line_width = 2;
-                $ctx.stroke;
-                $surface;
-            }
+            $surface;
         }
     }
     method XObject($key) {
@@ -449,13 +453,6 @@ class PDF::Render::Cairo {
         $surface.finish;
     }
 
-    multi method save-page-as($page, Str(Cool) $outfile where /:i '.pdf' $/) {
-        my $surface = Cairo::Surface::PDF.create($outfile, $page.width, $page.height);
-        my $feed = PDF::Render::Cairo.new: :content($page), :$surface;
-        $surface.show_page;
-        $surface.finish;
-     }
-
     multi method save-as(PDF::Class $pdf, Str(Cool) $outfile where /:i '.'('png'|'svg') $/) {
         my \format = $0.lc;
         my UInt $pages = $pdf.page-count;
@@ -483,8 +480,8 @@ class PDF::Render::Cairo {
         my UInt $pages = $pdf.page-count;
 
         for 1 .. $pages -> UInt $page-num {
-            my $page = $pdf.page($page-num);
-            my $feed = PDF::Render::Cairo.new: :content($page), :$surface;
+            my $content = $pdf.page($page-num);
+            PDF::Render::Cairo.render: :$content, :$surface;
             $surface.show_page;
         }
         $surface.finish;
