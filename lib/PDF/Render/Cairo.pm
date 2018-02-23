@@ -216,8 +216,8 @@ class PDF::Render::Cairo {
     }
 
     sub matrix-to-cairo(Num(Numeric) $scale-x, Num(Numeric) $skew-x,
-                          Num(Numeric) $skew-y,  Num(Numeric) $scale-y,
-                          Num(Numeric) $trans-x, Num(Numeric) $trans-y) {
+                        Num(Numeric) $skew-y,  Num(Numeric) $scale-y,
+                        Num(Numeric) $trans-x, Num(Numeric) $trans-y) {
 
        Cairo::Matrix.new.init(
             :xx($scale-x), :yy($scale-y),
@@ -359,12 +359,13 @@ class PDF::Render::Cairo {
             $pattern<XStep> // $image.width,
             $pattern<YStep> // $image.height);
         my Cairo::Context $ctx .= new($padded-img);
-        $ctx.set_source_surface($image, 0, 0);
+        $ctx.set_source_surface($image);
         $ctx.paint;
         my Cairo::Pattern::Surface $patt .= create($padded-img.surface);
         $patt.extend = Cairo::Extend::EXTEND_REPEAT;
-        $patt.matrix = matrix-to-cairo(|$_).invert
-            with $pattern<Matrix>;
+        my $ctm = matrix-to-cairo(|$!gfx.CTM);
+        $patt.matrix = $ctm.multiply(matrix-to-cairo(|$_).invert)
+            with $pattern.Matrix;
         $patt;
     }
     method !make-image(PDF::XObject::Image $xobject) {
@@ -409,7 +410,7 @@ class PDF::Render::Cairo {
 
             with $surface {
                 $!ctx.translate(0, -$xobject.height);
-                $!ctx.set_source_surface($_, 0, 0);
+                $!ctx.set_source_surface($_);
                 $!ctx.paint_with_alpha($!gfx.FillAlpha);
             }
 
@@ -428,6 +429,10 @@ class PDF::Render::Cairo {
         sub ($op, *@args) {
             my $method = OpCode($op).key;
             self."$method"(|@args);
+            given $!ctx.status -> $status {
+                die "bad Cairo status $status {Cairo::cairo_status_t($status).key} after $method\({@args}\) operation"
+                    if $status;
+            }
         }
     }
 
