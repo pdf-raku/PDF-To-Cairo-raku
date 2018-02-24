@@ -23,6 +23,12 @@ class PDF::Render::Cairo {
     has Numeric $!tx = 0.0;
     has Numeric $!ty = 0.0;
     has Numeric $!hscale = 1.0;
+    my class Cache {
+        has Cairo::Surface %.form{Any};
+        has Cairo::Surface %.pattern{Any};
+        has %.font;
+    }
+    has Cache $.cache .= new;
 
     submethod TWEAK(:$!gfx = $!content.gfx(:!render),
                     Bool :$feed = True,
@@ -234,11 +240,10 @@ class PDF::Render::Cairo {
         self!concat-matrix(|@matrix);
     }
     method BeginText() { $!tx = 0.0; $!ty = 0.0; }
-    has %!font-cache;
     method SetFont($font-key, $font-size) {
         $!ctx.set_font_size($font-size);
         with $!gfx.resource-entry('Font', $font-key) {
-            $!current-font = %!font-cache{$font-key} //= do {
+            $!current-font = $!cache.font{$font-key} //= do {
                 my $font-obj = PDF::Render::Cairo::FontLoader.load-font: :dict($_);
                 my $ft-face = $font-obj.face.struct;
                 my Cairo::Font $cairo-font .= create(
@@ -346,22 +351,23 @@ class PDF::Render::Cairo {
     }
     method EndText()  { $!tx = 0.0; $!ty = 0.0; }
 
-    has Cairo::Surface %!form-cache{Any};
     method !make-form($xobject) {
-        %!form-cache{$xobject} //= self.render: :content($xobject), :transparent;
+        $!cache.form{$xobject} //= self.render: :content($xobject), :transparent, :$!cache;
     }
     need PDF::Pattern::Tiling;
-##    has Cairo::Surface %!pattern-cache{Any};
     method !make-tiling-pattern(PDF::Pattern::Tiling $pattern) {
-        my $image = self.render: :content($pattern), :transparent;
-        my $padded-img = Cairo::Image.create(
-            Cairo::FORMAT_ARGB32,
-            $pattern<XStep> // $image.width,
-            $pattern<YStep> // $image.height);
-        my Cairo::Context $ctx .= new($padded-img);
-        $ctx.set_source_surface($image);
-        $ctx.paint;
-        my Cairo::Pattern::Surface $patt .= create($padded-img.surface);
+        my $img = $!cache.pattern{$pattern} //= do {
+            my $image = self.render: :content($pattern), :transparent, :$!cache;
+            my $padded-img = Cairo::Image.create(
+                Cairo::FORMAT_ARGB32,
+                $pattern<XStep> // $image.width,
+                $pattern<YStep> // $image.height);
+            my Cairo::Context $ctx .= new($padded-img);
+            $ctx.set_source_surface($image);
+            $ctx.paint;
+            $padded-img;
+        }
+        my Cairo::Pattern::Surface $patt .= create($img.surface);
         $patt.extend = Cairo::Extend::EXTEND_REPEAT;
         my $ctm = matrix-to-cairo(|$!gfx.CTM);
         $patt.matrix = $ctm.multiply(matrix-to-cairo(|$_).invert)
@@ -369,7 +375,7 @@ class PDF::Render::Cairo {
         $patt;
     }
     method !make-image(PDF::XObject::Image $xobject) {
-        %!form-cache{$xobject} //= do {
+        $!cache.form{$xobject} //= do {
             my Cairo::Image $surface;
             try {
                 CATCH {
@@ -452,15 +458,16 @@ class PDF::Render::Cairo {
         $surface.write_png: $filename;
     }
 
-    multi method save-page-as(PDF::Content::Graphics $content, Str $filename where /:i '.svg' $/) {
+    multi method save-page-as(PDF::Content::Graphics $content, Str $filename where /:i '.svg' $/, :$cache = Cache.new;) {
         my $surface = Cairo::Surface::SVG.create($filename, $content.width, $content.height);
-        my $feed = self.render: :$content, :$surface;
+        my $feed = self.render: :$content, :$surface, :$cache;
         $surface.finish;
     }
 
     multi method save-as(PDF::Class $pdf, Str(Cool) $outfile where /:i '.'('png'|'svg') $/) {
         my \format = $0.lc;
         my UInt $pages = $pdf.page-count;
+        my $cache = Cache.new;
 
         for 1 .. $pages -> UInt $page-num {
 
@@ -475,7 +482,7 @@ class PDF::Render::Cairo {
 
             my $page = $pdf.page($page-num);
             $*ERR.print: "saving page $page-num -> {format.uc} $img-filename...\n"; 
-            $.save-page-as($page, $img-filename);
+            $.save-page-as($page, $img-filename, :$cache);
         }
     }
 
@@ -483,10 +490,11 @@ class PDF::Render::Cairo {
         my $page1 = $pdf.page(1);
         my $surface = Cairo::Surface::PDF.create($outfile, $page1.width, $page1.height);
         my UInt $pages = $pdf.page-count;
+        my $cache = Cache.new;
 
         for 1 .. $pages -> UInt $page-num {
             my $content = $pdf.page($page-num);
-            PDF::Render::Cairo.render: :$content, :$surface;
+            PDF::Render::Cairo.render: :$content, :$surface, :$cache;
             $surface.show_page;
         }
         $surface.finish;
