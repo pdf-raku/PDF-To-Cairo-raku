@@ -4,6 +4,7 @@ use PDF::Class;
 use PDF::Render::Cairo;
 use PDF::Content::Page :PageSizes;
 use PDF::Content::Image;
+use PDF::Content::Color :rgb;
 use Cairo;
 
 my $pdf = PDF::Class.new;
@@ -17,7 +18,7 @@ $page.graphics: -> $gfx {
     my $form = $page.xobject-form: :BBox[0,0,150,150];
     $form.graphics: {
         .font = $form.core-font( :family<Times-Roman>, :weight<bold>, :style<italic> );
-        .FillColor = :DeviceRGB[ .8, .9, .9];
+        .FillColor = rgb( .8, .9, .9);
         .Rectangle(5,5,140,140);
         .Fill;
     }

@@ -3,6 +3,7 @@ use Test;
 use PDF::Class;
 use PDF::Render::Cairo;
 use PDF::Content::Page :PageSizes;
+use PDF::Content::Color :rgb;
 use Cairo;
 
 my $pdf = PDF::Class.new;
@@ -55,8 +56,8 @@ $page.graphics: -> $gfx {
         $page.text: {
             .text-position = [10, $y -= 40];
             .set-font($font, 32);
-            .FillColor = :DeviceRGB[.7, .2, .2];
-            .StrokeColor = :DeviceRGB[.2, .7, .7];
+            .FillColor = rgb(.7, .2, .2);
+            .StrokeColor = rgb(.2, .7, .7);
             for 0 .. 7 -> $m {
                 .TextRender = $m;
                 .ShowText("M$m ");

@@ -3,6 +3,7 @@ use Test;
 use PDF::Class;
 use PDF::Render::Cairo;
 use PDF::Content::Matrix :scale, :translate, :skew, :rotate;
+use PDF::Content::Color :rgb, :gray, :cmyk;
 
 my $pdf = PDF::Class.new;
 my $page = $pdf.add-page;
@@ -21,11 +22,11 @@ my $y = 600;
 
 $gfx.LineWidth = 3;
 
-for [ :DeviceGray[.2], :DeviceGray[.5] ],
-    [ :DeviceGray[.75], :DeviceGray[.5] ],
-    [ :DeviceRGB[.9, .1, .1,], :DeviceRGB[.1, .1, .9] ],
-    [ :DeviceCMYK[.9, .1, .1, .1], :DeviceCMYK[.1, .1, .9, .5] ],
-    [ :DeviceCMYK[.0, .0, .0, .3], :DeviceCMYK[.0, .0, .0, 1.0] ] {
+for [ gray(.2), gray(.5) ],
+    [ gray(.75), gray(.5) ],
+    [ rgb(.9, .1, .1,), rgb(.1, .1, .9) ],
+    [ cmyk(.9, .1, .1, .1), cmyk(.1, .1, .9, .5) ],
+    [ cmyk(.0, .0, .0, .3), cmyk(.0, .0, .0, 1.0) ] {
     $gfx.FillColor = .[0];
     $gfx.StrokeColor = .[1];
     $gfx.Rectangle($x, $y, 40, 40);
