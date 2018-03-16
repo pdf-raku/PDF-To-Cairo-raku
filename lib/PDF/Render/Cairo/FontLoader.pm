@@ -1,6 +1,5 @@
 class PDF::Render::Cairo::FontLoader {
     use PDF::Font::Loader;
-    use PDF::DAO::Dict;
     use PDF::Font;
     use PDF::Font::Type0;
     use PDF::Encoding;

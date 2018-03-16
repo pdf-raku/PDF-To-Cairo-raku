@@ -453,12 +453,12 @@ class PDF::Render::Cairo {
         }
     }
 
-    multi method save-page-as(PDF::Content::Graphics $content, Str $filename where /:i '.png' $/) {
+    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.png' $/) {
         my $surface = self.render: :$content;
         $surface.write_png: $filename;
     }
 
-    multi method save-page-as(PDF::Content::Graphics $content, Str $filename where /:i '.svg' $/, :$cache = Cache.new;) {
+    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.svg' $/, :$cache = Cache.new;) {
         my $surface = Cairo::Surface::SVG.create($filename, $content.width, $content.height);
         my $feed = self.render: :$content, :$surface, :$cache;
         $surface.finish;
@@ -482,7 +482,7 @@ class PDF::Render::Cairo {
 
             my $page = $pdf.page($page-num);
             $*ERR.print: "saving page $page-num -> {format.uc} $img-filename...\n"; 
-            $.save-page-as($page, $img-filename, :$cache);
+            $.save-as-image($page, $img-filename, :$cache);
         }
     }
 
