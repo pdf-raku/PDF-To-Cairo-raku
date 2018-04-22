@@ -1,6 +1,6 @@
 use v6;
 
-class PDF::Render::Cairo {
+class PDF::Render::Cairo:ver<0.0.1> {
 
 # A lightweight draft renderer for PDF to PNG or SVG
 # Aim is preview output for PDF::Content generated PDF's
