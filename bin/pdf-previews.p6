@@ -28,11 +28,9 @@ warn $input;
                 .Rectangle: |$content.MediaBox;
                 .Stroke;
             };
-            my $surface = PDF::Render::Cairo.render: :$content;
-
             my $filename = $png-out.sprintf($page-num);
             $*ERR.print: "saving $input page $page-num -> $filename...\n"; 
-            $surface.write_png: $filename;
+            $content.save-as-image($filename);
         }
     }
 }

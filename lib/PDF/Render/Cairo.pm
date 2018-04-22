@@ -41,13 +41,13 @@ class PDF::Render::Cairo {
 
     method render(|c --> Cairo::Surface) {
         my $obj = self.new( :!feed, |c);
-        my $content = $obj.content;
+        my PDF::Content::Graphics $content = $obj.content;
         if $content.has-pre-gfx {
-            my $gfx = $content.new-gfx: :callback[ $obj.callback ];
-            $gfx.ops: $content.pre-gfx.ops;
+            my $pre-gfx = $content.new-gfx: :callback[ $obj.callback ];
+            $pre-gfx.ops: $content.pre-gfx.ops;
         }
         temp $obj.gfx.callback = [ $obj.callback ];
-        $content.render($obj.gfx);
+        $content.render;
         $obj.surface;
     }
 

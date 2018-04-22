@@ -3,7 +3,7 @@ use Test;
 use PDF::Class;
 use PDF::Render::Cairo;
 use PDF::Content::Matrix :translate, :rotate;
-use Cairo:ver(v0.2.1..*);
+use Cairo:ver(v0.2.1+);
 
 my $pdf = PDF::Class.new;
 my $page = $pdf.add-page;
