@@ -1,21 +1,22 @@
 use v6;
 use Test;
 use PDF::Class;
+use PDF::Page;
 use PDF::Render::Cairo;
 use PDF::Content::Page :PageSizes;
-use PDF::Content::Image;
+use PDF::Content::XObject;
 use PDF::Content::Color :rgb;
 use Cairo;
 
-my $pdf = PDF::Class.new;
+my PDF::Class $pdf .= new;
 my $page = $pdf.add-page;
 $page.MediaBox = PageSizes::Letter;
-my $feed = PDF::Render::Cairo.new: :content($page);
+my PDF::Render::Cairo $feed .= new: :content($page);
 $page.graphics: -> $gfx {
     my $font = $page.core-font( :family<Helvetica> );
     my $y = $page.MediaBox[3];
 
-    my $form = $page.xobject-form: :BBox[0,0,150,150];
+    my PDF::Content::XObject $form = $page.xobject-form: :BBox[0,0,150,150];
     $form.graphics: {
         .font = $form.core-font( :family<Times-Roman>, :weight<bold>, :style<italic> );
         .FillColor = rgb( .8, .9, .9);
@@ -33,7 +34,7 @@ $page.graphics: -> $gfx {
     $gfx.LineTo(160,95);
     $gfx.Stroke; 
 
-    my $image = PDF::Content::Image.open: "t/images/crosshair-100x100.png";
+    my PDF::Content::XObject $image .= open: "t/images/crosshair-100x100.png";
     $gfx.do($image, 10, 300);
 
 }

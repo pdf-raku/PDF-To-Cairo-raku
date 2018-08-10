@@ -6,10 +6,10 @@ use PDF::Content::Page :PageSizes;
 use PDF::Content::Color :rgb;
 use Cairo;
 
-my $pdf = PDF::Class.new;
+my PDF::Class $pdf .= new;
 my $page = $pdf.add-page;
 $page.MediaBox = PageSizes::Letter;
-my $feed = PDF::Render::Cairo.new: :content($page);
+my PDF::Render::Cairo $feed .= new: :content($page);
 $page.graphics: -> $gfx {
     my $font = $page.core-font( :family<Helvetica> );
     my $y = $page.MediaBox[3];

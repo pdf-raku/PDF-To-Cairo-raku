@@ -16,7 +16,7 @@ class PDF::Render::Cairo:ver<0.0.1> {
     has PDF::Content::Ops $.gfx;
     has $.content is required handles <width height>;
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
-    has Cairo::Context $.ctx = Cairo::Context.new: $!surface;
+    has Cairo::Context $.ctx .= new: $!surface;
     has List $.current-font;
     method current-font { $!current-font[0] }
     has Hash @!save;
@@ -454,12 +454,12 @@ class PDF::Render::Cairo:ver<0.0.1> {
     }
 
     multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.png' $/) {
-        my $surface = self.render: :$content;
+        my Cairo::Surface $surface = self.render: :$content;
         $surface.write_png: $filename;
     }
 
-    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.svg' $/, :$cache = Cache.new;) {
-        my $surface = Cairo::Surface::SVG.create($filename, $content.width, $content.height);
+    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.svg' $/, :$cache = Cache.new) {
+        my Cairo::Surface::SVG $surface .= create($filename, $content.width, $content.height);
         my $feed = self.render: :$content, :$surface, :$cache;
         $surface.finish;
     }
@@ -467,7 +467,7 @@ class PDF::Render::Cairo:ver<0.0.1> {
     multi method save-as(PDF::Class $pdf, Str(Cool) $outfile where /:i '.'('png'|'svg') $/) {
         my \format = $0.lc;
         my UInt $pages = $pdf.page-count;
-        my $cache = Cache.new;
+        my Cache $cache .= new;
 
         for 1 .. $pages -> UInt $page-num {
 
@@ -488,9 +488,9 @@ class PDF::Render::Cairo:ver<0.0.1> {
 
     multi method save-as(PDF::Class $pdf, Str(Cool) $outfile where /:i '.pdf' $/) {
         my $page1 = $pdf.page(1);
-        my $surface = Cairo::Surface::PDF.create($outfile, $page1.width, $page1.height);
+        my Cairo::Surface::PDF $surface .= create($outfile, $page1.width, $page1.height);
         my UInt $pages = $pdf.page-count;
-        my $cache = Cache.new;
+        my Cache $cache .= new;
 
         for 1 .. $pages -> UInt $page-num {
             my $content = $pdf.page($page-num);
