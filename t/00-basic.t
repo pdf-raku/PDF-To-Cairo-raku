@@ -2,13 +2,13 @@ use v6;
 use Test;
 use PDF::Class;
 use PDF::Page;
-use PDF::Render::Cairo;
+use PDF::To::Cairo;
 use PDF::Content::Matrix :scale, :translate, :skew, :rotate;
 use PDF::Content::Color :rgb, :gray, :cmyk;
 
 my PDF::Class $pdf .= new;
 my PDF::Page $page = $pdf.add-page;
-my PDF::Render::Cairo $feed .= new: :content($page);
+my PDF::To::Cairo $feed .= new: :content($page);
 my $gfx = $page.gfx;
 
 $gfx.Save;

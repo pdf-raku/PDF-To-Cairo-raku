@@ -2,7 +2,7 @@ use v6;
 use Test;
 use PDF::Class;
 use PDF::Page;
-use PDF::Render::Cairo;
+use PDF::To::Cairo;
 use PDF::Content::Page :PageSizes;
 use PDF::Content::XObject;
 use PDF::Content::Color :rgb;
@@ -11,7 +11,7 @@ use Cairo;
 my PDF::Class $pdf .= new;
 my $page = $pdf.add-page;
 $page.MediaBox = PageSizes::Letter;
-my PDF::Render::Cairo $feed .= new: :content($page);
+my PDF::To::Cairo $feed .= new: :content($page);
 $page.graphics: -> $gfx {
     my $font = $page.core-font( :family<Helvetica> );
     my $y = $page.MediaBox[3];

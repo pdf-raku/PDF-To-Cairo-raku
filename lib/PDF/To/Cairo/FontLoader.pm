@@ -1,4 +1,4 @@
-class PDF::Render::Cairo::FontLoader {
+class PDF::To::Cairo::FontLoader {
     use PDF::Font::Loader;
     use PDF::Font;
     use PDF::Font::Type0;
