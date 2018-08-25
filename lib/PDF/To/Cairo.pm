@@ -281,9 +281,9 @@ class PDF::To::Cairo:ver<0.0.1> {
             when InvisableText {
             }
             default { # other modes
-                my \fill = ?(text-render == FillText|FillOutlineText|FillClipText|FillOutlineClipText);
-                my \stroke = ?(text-render == OutlineText|FillOutlineText|OutlineClipText|FillOutlineClipText);
-                my \clip = ?(text-render == FillClipText|OutlineClipText|ClipText);
+                my \fill   = ?(text-render ~~ FillText|FillOutlineText|FillClipText|FillOutlineClipText);
+                my \stroke = ?(text-render ~~ OutlineText|FillOutlineText|OutlineClipText|FillOutlineClipText);
+                my \clip   = ?(text-render ~~ FillClipText|OutlineClipText|ClipText);
 
                 $!ctx.text_path($text);
 
