@@ -1,6 +1,6 @@
 use v6;
 
-class PDF::To::Cairo:ver<0.0.1> {
+class PDF::To::Cairo:ver<0.0.2> {
 
 # A lightweight draft renderer for PDF via Cairo to PNG, SVG, etc
 # Aim is preview output for PDF::Content generated PDF's
@@ -11,7 +11,7 @@ class PDF::To::Cairo:ver<0.0.1> {
     use Color;
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
-    use PDF::To::Cairo::FontLoader;
+    use PDF::Font::Loader:ver(v0.2.3+);
 
     has PDF::Content::Ops $.gfx;
     has $.content is required handles <width height>;
@@ -244,7 +244,7 @@ class PDF::To::Cairo:ver<0.0.1> {
         $!ctx.set_font_size($font-size);
         with $!gfx.resource-entry('Font', $font-key) {
             $!current-font = $!cache.font{$font-key} //= do {
-                my $font-obj = PDF::To::Cairo::FontLoader.load-font: :dict($_);
+                my $font-obj = PDF::Font::Loader.load-font: :dict($_);
                 my $ft-face = $font-obj.face.struct;
                 my Cairo::Font $cairo-font .= create(
                     $ft-face, :free-type,
