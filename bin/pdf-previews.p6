@@ -1,7 +1,7 @@
 #!/usr/bin/env perl6
 use v6;
 use PDF::Class;
-use PDF::Render::Cairo;
+use PDF::To::Cairo;
 
 sub MAIN(
     Str $directory = '.',         #| directory to be scanned for PDFS
@@ -55,7 +55,7 @@ This program bursts a multiple page into single page PNG files.
 By default, the output pdf will be named infile001.png infile002.png ...
 
 The `outspec`, if present, will be used as a 'sprintf' template
-for generation of the individual output PNG files.
+for generation of the individual per-page output PNG files.
 
 ** This is neither fast, or complete ** It exists to exercise other
 components in the Perl 6 ecosystem, including PDF::Content and Cairo.

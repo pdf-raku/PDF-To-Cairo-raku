@@ -13,7 +13,6 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Font::Loader:ver(v0.2.3+);
 
-    has PDF::Content::Ops $.gfx;
     has $.content is required handles <width height>;
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
     has Cairo::Context $.ctx .= new: $!surface;
@@ -30,30 +29,31 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
     has Cache $.cache .= new;
 
-    submethod TWEAK(:$!gfx = $!content.gfx(:!render),
+    submethod TWEAK(:$gfx = $!content.gfx(:!render),
                     Bool :$feed = True,
                     Bool :$transparent = False,
         ) {
         self!init: :$transparent;
-        $!gfx.callback.push: self.callback
+        $gfx.callback.push: self.callback
             if $feed;
     }
 
     method render(|c --> Cairo::Surface) {
         my $obj = self.new( :!feed, |c);
         my PDF::Content::Graphics $content = $obj.content;
+        my @callback = [ $obj.callback ];
         if $content.has-pre-gfx {
-            my $pre-gfx = $content.new-gfx: :callback[ $obj.callback ];
+            my $pre-gfx = $content.new-gfx: :@callback;
             $pre-gfx.ops: $content.pre-gfx.ops;
         }
-        temp $obj.gfx.callback = [ $obj.callback ];
+        temp $content.gfx(:!render).callback = @callback;
         $content.render;
         $obj.surface;
     }
 
     method !init(:$transparent) {
         $!ctx.translate(0, self.height);
-        $!ctx.line_width = $!gfx.LineWidth;
+        $!ctx.line_width = 1.0;
         unless $transparent {
             $!ctx.rgb(1.0, 1.0, 1.0);
             $!ctx.paint;
@@ -81,7 +81,7 @@ class PDF::To::Cairo:ver<0.0.2> {
             }
             when 'Pattern' {
                 with $colors[0] {
-                    with $!gfx.resource-entry('Pattern', $_) -> $pattern {
+                    with $*gfx.resource-entry('Pattern', $_) -> $pattern {
                         given $pattern.PatternType {
                             when 1 { # Tiling
                                 my $img = self!make-tiling-pattern($pattern);
@@ -101,8 +101,8 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
 
-    method !set-stroke-color { self!set-color($!gfx.StrokeColor, $!gfx.StrokeAlpha) }
-    method !set-fill-color { self!set-color($!gfx.FillColor, $!gfx.FillAlpha) }
+    method !set-stroke-color { self!set-color($*gfx.StrokeColor, $*gfx.StrokeAlpha) }
+    method !set-fill-color { self!set-color($*gfx.FillColor, $*gfx.FillAlpha) }
 
     method Save()      {
         $!ctx.save;
@@ -242,7 +242,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     method BeginText() { $!tx = 0.0; $!ty = 0.0; }
     method SetFont($font-key, $font-size) {
         $!ctx.set_font_size($font-size);
-        with $!gfx.resource-entry('Font', $font-key) {
+        with $*gfx.resource-entry('Font', $font-key) {
             $!current-font = $!cache.font{$font-key} //= do {
                 my $font-obj = PDF::Font::Loader.load-font: :dict($_);
                 my $ft-face = $font-obj.face.struct;
@@ -269,9 +269,9 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
     method SetTextRender(Int) { }
     method !show-text($text) {
-        my \text-render = $!gfx.TextRender;
+        my \text-render = $*gfx.TextRender;
 
-        $!ctx.move_to($!tx / $!hscale, $!ty - $!gfx.TextRise);
+        $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
 
         given text-render {
             when FillText {
@@ -304,8 +304,8 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method !text(&stuff) {
         $!ctx.save;
-        self!concat-matrix(|$!gfx.TextMatrix);
-        $!hscale = $!gfx.HorizScaling / 100.0;
+        self!concat-matrix(|$*gfx.TextMatrix);
+        $!hscale = $*gfx.HorizScaling / 100.0;
         $!ctx.scale($!hscale, 1)
             unless $!hscale =~= 1.0;
         &stuff();
@@ -319,7 +319,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
     method ShowSpaceText(List $text) {
         self!text: {
-            my Numeric $font-size = $!gfx.Font[1];
+            my Numeric $font-size = $*gfx.Font[1];
             for $text.list {
                 when Str {
                     self!show-text: $.current-font.decode($_, :str);
@@ -369,7 +369,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
         my Cairo::Pattern::Surface $patt .= create($img.surface);
         $patt.extend = Cairo::Extend::EXTEND_REPEAT;
-        my $ctm = matrix-to-cairo(|$!gfx.CTM);
+        my $ctm = matrix-to-cairo(|$*gfx.CTM);
         $patt.matrix = $ctm.multiply(matrix-to-cairo(|$_).invert)
             with $pattern.Matrix;
         $patt;
@@ -401,7 +401,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
     method XObject($key) {
-        with $!gfx.resource-entry('XObject', $key) -> $xobject {
+        with $*gfx.resource-entry('XObject', $key) -> $xobject {
             $!ctx.save;
 
             my $surface = do given $xobject<Subtype> {
@@ -417,7 +417,7 @@ class PDF::To::Cairo:ver<0.0.2> {
             with $surface {
                 $!ctx.translate(0, -$xobject.height);
                 $!ctx.set_source_surface($_);
-                $!ctx.paint_with_alpha($!gfx.FillAlpha);
+                $!ctx.paint_with_alpha($*gfx.FillAlpha);
             }
 
             $!ctx.restore;

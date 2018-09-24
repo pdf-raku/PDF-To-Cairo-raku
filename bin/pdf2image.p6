@@ -3,7 +3,7 @@ use v6;
 use PDF::Class;
 use PDF::Content;
 use PDF::Content::Graphics;
-use PDF::Render::Cairo;
+use PDF::To::Cairo;
 
 #| reading from stdin
 multi sub output-filename('-') {"pdf-page-%03d.png"}
@@ -29,14 +29,14 @@ sub MAIN(Str $infile,            #| input PDF
 	!! $infile;
 
     my $pdf = PDF::Class.open( $input, :$password);
-    PDF::Render::Cairo.save-as($pdf, $outfile);
+    PDF::To::Cairo.save-as($pdf, $outfile);
 }
 
 =begin pod
 
 =head1 NAME
 
-pdf2png.p6 - Convert a PDF to PNG, or SVG images, using .... (wait for it) ... Perl 6!
+pdf2image.p6 - Convert a PDF to PNG, or SVG images, using Perl 6!
 
 =head1 SYNOPSIS
 
@@ -62,7 +62,7 @@ components in the Perl 6 ecosystem, including PDF::Content and Cairo.
 PDF::Class
 PDF::Content
 PDF::Font::Loader
-PDF::Render::Cairo
+PDF::To::Cairo
 
 =head1 AUTHOR
 
