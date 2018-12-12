@@ -28,6 +28,8 @@ class PDF::To::Cairo:ver<0.0.2> {
         has %.font;
     }
     has Cache $.cache .= new;
+    has Bool $.trace;
+    has UInt $.nesting = 0;
 
     submethod TWEAK(:$gfx = $!content.gfx(:!render),
                     Bool :$feed = True,
@@ -65,8 +67,16 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
 
     method !set-color($_, $alpha) {
+        need PDF::ColorSpace::ICCBased;
         my ($cs, $colors) = .kv;
         given $cs {
+            when PDF::ColorSpace::ICCBased {
+                # nyi. fallback to a device color
+                my $alternate = .Alternate
+                    // [Mu, 'DeviceGray', Mu, 'DeviceRGB', 'DeviceCMYK'][+$colors];
+                self!set-color($_ => $colors, $alpha)
+                    with $alternate;
+            }
             when 'DeviceRGB' {
                 $!ctx.rgba( |$colors, $alpha );
             }
@@ -95,8 +105,16 @@ class PDF::To::Cairo:ver<0.0.2> {
                     }
                 }
             }
+            when Str {
+                with $*gfx.resource-entry('ColorSpace', $_) {
+                    self!set-color($_ => $colors, $alpha);
+                }
+                else {
+                    warn "can't handle colorspace: $_";
+                }
+            }
             default {
-                warn "can't handle colorspace: $_";
+                warn "can't handle colorspace object of type: {.WHAT.^name}";
             }
         }
     }
@@ -139,19 +157,16 @@ class PDF::To::Cairo:ver<0.0.2> {
         self.Stroke;
     }
     method EOFill {
-        $!ctx.fill_rule = Cairo::FILL_RULE_EVEN_ODD;
+        temp $!ctx.fill_rule = Cairo::FILL_RULE_EVEN_ODD;
         self.Fill;
-        $!ctx.fill_rule = Cairo::FILL_RULE_WINDING;
     }
     method EOFillStroke {
-        $!ctx.fill_rule = Cairo::FILL_RULE_EVEN_ODD;
+        temp $!ctx.fill_rule = Cairo::FILL_RULE_EVEN_ODD;
         self.FillStroke;
-        $!ctx.fill_rule = Cairo::FILL_RULE_WINDING;
     }
     method CloseEOFillStroke {
-        $!ctx.fill_rule = Cairo::FILL_RULE_EVEN_ODD;
+        temp $!ctx.fill_rule = Cairo::FILL_RULE_EVEN_ODD;
         self.CloseFillStroke;
-        $!ctx.fill_rule = Cairo::FILL_RULE_WINDING;
     }
     method SetStrokeRGB(*@) {}
     method SetFillRGB(*@) {}
@@ -167,11 +182,11 @@ class PDF::To::Cairo:ver<0.0.2> {
     method EndPath() { $!ctx.new_path }
 
     method MoveTo(Numeric $x, Numeric $y) {
-        $!ctx.move_to: |self!coords($x,$y);
+        $!ctx.move_to: |self!coords($x, $y);
     }
 
     method LineTo(Numeric $x, Numeric $y) {
-        $!ctx.line_to: |self!coords($x,$y);
+        $!ctx.line_to: |self!coords($x, $y);
     }
 
     method SetLineCap(UInt $lc) {
@@ -207,10 +222,18 @@ class PDF::To::Cairo:ver<0.0.2> {
         $!ctx.curve_to(|c1, |c2, |c3);
     }
 
-    method CurveToInitial(Numeric $x1, Numeric $y1, Numeric $x2, Numeric $y2) {
+    method CurveToInitial(Numeric $x2, Numeric $y2, Numeric $x3, Numeric $y3) {
+        my \c1 = |self!coords($x2, $y2);
+        my \c2 = |self!coords($x3, $y3);
+        my \c3 = c2;
+        $!ctx.curve_to(|c1, |c2, |c3);
+    }
+
+    method CurveToFinal(Numeric $x1, Numeric $y1, Numeric $x3, Numeric $y3) {
         my \c1 = |self!coords($x1, $y1);
-        my \c2 = |self!coords($x2, $y2);
-        $!ctx.curve_to(|c1, |c2, |c2);
+        my \c3 = |self!coords($x3, $y3);
+        my \c2 = c3;
+        $!ctx.curve_to(|c1, |c2, |c3);
     }
 
     method Rectangle(Numeric $x, Numeric $y, Numeric $w, Numeric $h) {
@@ -269,10 +292,10 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
     method SetTextRender(Int) { }
     method !show-text($text) {
-        my \text-render = $*gfx.TextRender;
 
         $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
 
+        my \text-render = $*gfx.TextRender;
         given text-render {
             when FillText {
                 self!set-fill-color;
@@ -352,12 +375,16 @@ class PDF::To::Cairo:ver<0.0.2> {
     method EndText()  { $!tx = 0.0; $!ty = 0.0; }
 
     method !make-form($xobject) {
-        $!cache.form{$xobject} //= self.render: :content($xobject), :transparent, :$!cache;
+        $!cache.form{$xobject} //= do {
+            my $nesting = $!nesting + 1;
+            self.render: :content($xobject), :transparent, :$!cache, :$!trace, :$nesting;
+        }
     }
     need PDF::Pattern::Tiling;
     method !make-tiling-pattern(PDF::Pattern::Tiling $pattern) {
         my $img = $!cache.pattern{$pattern} //= do {
-            my $image = self.render: :content($pattern), :transparent, :$!cache;
+            my $nesting = $!nesting + 1;
+            my $image = self.render: :content($pattern), :transparent, :$!cache, :$!trace, :$nesting;
             my $padded-img = Cairo::Image.create(
                 Cairo::FORMAT_ARGB32,
                 $pattern<XStep> // $image.width,
@@ -428,12 +455,15 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
 
     method BeginMarkedContent(Str) { }
-    method BeginMarkedContentDict(Str, Hash) { }
+    subset HashOrStr where Hash|Str;
+    method BeginMarkedContentDict(Str, HashOrStr) { }
     method EndMarkedContent() { }
 
     method callback{
         sub ($op, *@args) {
             my $method = OpCode($op).key;
+            note ('  ' x $!nesting) ~ "$method\({@args.map(*.perl).join: ", "}\)"
+                if $!trace;
             self."$method"(|@args);
             given $!ctx.status -> $status {
                 die "bad Cairo status $status {Cairo::cairo_status_t($status).key} after $method\({@args}\) operation"
@@ -453,18 +483,18 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
 
-    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.png' $/) {
-        my Cairo::Surface $surface = self.render: :$content;
+    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.png' $/, |c) {
+        my Cairo::Surface $surface = self.render: :$content, |c;
         $surface.write_png: $filename;
     }
 
-    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.svg' $/, :$cache = Cache.new) {
+    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.svg' $/, :$cache = Cache.new, |c) {
         my Cairo::Surface::SVG $surface .= create($filename, $content.width, $content.height);
-        my $feed = self.render: :$content, :$surface, :$cache;
+        my $feed = self.render: :$content, :$surface, :$cache, |c;
         $surface.finish;
     }
 
-    multi method save-as(PDF::Class $pdf, Str(Cool) $outfile where /:i '.'('png'|'svg') $/) {
+    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.'('png'|'svg') $/, |c) {
         my \format = $0.lc;
         my UInt $pages = $pdf.page-count;
         my Cache $cache .= new;
@@ -482,11 +512,11 @@ class PDF::To::Cairo:ver<0.0.2> {
 
             my $page = $pdf.page($page-num);
             $*ERR.print: "saving page $page-num -> {format.uc} $img-filename...\n"; 
-            $.save-as-image($page, $img-filename, :$cache);
+            $.save-as-image($page, $img-filename, :$cache, |c);
         }
     }
 
-    multi method save-as(PDF::Class $pdf, Str(Cool) $outfile where /:i '.pdf' $/) {
+    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.pdf' $/) {
         my $page1 = $pdf.page(1);
         my Cairo::Surface::PDF $surface .= create($outfile, $page1.width, $page1.height);
         my UInt $pages = $pdf.page-count;

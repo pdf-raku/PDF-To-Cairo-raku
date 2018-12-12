@@ -15,7 +15,6 @@ $gfx.Save;
 $gfx.MoveTo(175, 720);
 $gfx.LineTo(175, 700);
 $gfx.CurveToInitial( 300, 800,  400, 720 );
-$gfx.CurveToFinal( 150, 800,  350, 720 );
 $gfx.ClosePath;
 $gfx.Stroke;
 
