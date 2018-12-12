@@ -7,7 +7,7 @@ class PDF::To::Cairo:ver<0.0.2> {
 #
     use PDF::Class;
     use PDF::XObject::Image;
-    use Cairo:ver(v0.2.1+);
+    need Cairo:ver(v0.2.1+);
     use Color;
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
