@@ -9,20 +9,20 @@ use Cairo;
 my PDF::Class $pdf .= new;
 my $page = $pdf.add-page;
 $page.MediaBox = PageSizes::Letter;
-my PDF::To::Cairo $feed .= new: :content($page);
+my PDF::To::Cairo $feed .= new: :content($page), :trace, :debug;
 $page.graphics: -> $gfx {
     my $font = $page.core-font( :family<Helvetica> );
     my $y = $page.MediaBox[3];
 
     $page.text: {
-        .set-font($font, 10);
-        isa-ok $feed.current-font, (require ::('PDF::Font::Loader::Type1')), 'current-font';
+        .font = $font, 10;
+        isa-ok $feed.current-font, (require ::('PDF::Font::Loader::FreeType')), 'current-font';
         .text-position = [50, $y -= 20];
         .print('Hello World!');
         .text-position = [10, $y -= 20];
         my $text = $['The', -500, 'long', -500, 'and', -200, 'short.'];
         .ShowSpaceText($text);
-        .set-font($font, 15);
+        .font = $font, 15;
         .text-position = [10, $y -= 20];
         .ShowSpaceText($text);
 
