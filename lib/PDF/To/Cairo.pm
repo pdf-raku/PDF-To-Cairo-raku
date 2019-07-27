@@ -31,7 +31,9 @@ class PDF::To::Cairo:ver<0.0.2> {
     has Bool $.trace;
     has UInt $.nesting = 0;
 
-    submethod TWEAK(:$gfx = $!content.gfx(:!render),
+    submethod TWEAK(
+                    Bool :$debug,
+                    :$gfx = $!content.gfx(:!render, :$debug),
                     Bool :$feed = True,
                     Bool :$transparent = False,
         ) {
@@ -268,7 +270,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         with $*gfx.resource-entry('Font', $font-key) {
             $!current-font = $!cache.font{$font-key} //= do {
                 my $font-obj = PDF::Font::Loader.load-font: :dict($_);
-                my $ft-face = $font-obj.face.struct;
+                my $ft-face = $font-obj.face.native;
                 my Cairo::Font $cairo-font .= create(
                     $ft-face, :free-type,
                 );
