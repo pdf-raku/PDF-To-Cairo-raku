@@ -8,7 +8,6 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Class;
     use PDF::XObject::Image;
     need Cairo:ver(v0.2.1+);
-    use Color;
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Font::Loader:ver(v0.2.3+);
@@ -98,8 +97,10 @@ class PDF::To::Cairo:ver<0.0.2> {
                 $!ctx.rgba( |@rgb, $alpha );
             }
             when 'DeviceCMYK' {
-                my Color $color .= new: :cmyk($colors);
-                my @rgb = $color.rgb.map: * / 255;
+                # See [PDF 32000 10.3.5 - Conversion from DeviceCMYK to DeviceRGB]
+                my @cmyk = $colors.list;
+                my $k = @cmyk.pop;
+                my @rgb = @cmyk.map: { 1.0 - min(1.0, $_ + $k) };
                 $!ctx.rgba( |@rgb, $alpha );
             }
             when 'Pattern' {

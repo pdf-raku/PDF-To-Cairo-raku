@@ -6,7 +6,7 @@
     "api"         : "PDF-1.7",
     "auth"        : "github:p6-pdf",
     "description" : "Cairo rendering backend for PDF::Content (experimental)",
-    "depends"     : [ "Color", "Cairo", "PDF::Content", "PDF::Class", "PDF::Font::Loader" ],
+    "depends"     : [ "Cairo", "PDF::Content", "PDF::Class", "PDF::Font::Loader" ],
     "source-url"  : "git://github.com/p6-pdf/PDF-To-Cairo-p6.git",
     "provides"    : {
         "PDF::To::Cairo" : "lib/PDF/To/Cairo.pm"
