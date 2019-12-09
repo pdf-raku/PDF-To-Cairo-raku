@@ -48,7 +48,7 @@ pdf2image.p6 - Convert a PDF to PNG, or SVG images, using Perl 6!
  Options:
    --password=str       # provide a password for an encrypted PDF
    --page=n             # render just this page
-   --trace --debug      # trace or debug rendering
+   --trace --debug      # debugging/tracing
 
 =head1 DESCRIPTION
 

@@ -71,6 +71,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     method !set-color($_, $alpha) {
         need PDF::ColorSpace::ICCBased;
         need PDF::ColorSpace::Separation;
+        need PDF::ColorSpace::DeviceN;
         my ($cs, $colors) = .kv;
         given $cs {
             when PDF::ColorSpace::ICCBased {
@@ -80,7 +81,8 @@ class PDF::To::Cairo:ver<0.0.2> {
                 self!set-color($_ => $colors, $alpha)
                     with $alternate;
             }
-            when PDF::ColorSpace::Separation {
+            when PDF::ColorSpace::Separation
+            |    PDF::ColorSpace::DeviceN {
                 # use the Alternative color-space
                 with .AlternateSpace -> $alt {
                     $colors := .calculator.calc($colors)
