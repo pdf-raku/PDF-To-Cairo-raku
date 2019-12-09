@@ -16,7 +16,7 @@ $page.graphics: -> $gfx {
 
     $page.text: {
         .font = $font, 10;
-        isa-ok $feed.current-font, (require ::('PDF::Font::Loader::FreeType')), 'current-font';
+        isa-ok $feed.current-font, 'PDF::Font::Loader::FreeType', 'current-font';
         .text-position = [50, $y -= 20];
         .print('Hello World!');
         .text-position = [10, $y -= 20];

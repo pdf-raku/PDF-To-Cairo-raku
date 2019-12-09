@@ -23,15 +23,16 @@ sub MAIN(Str $infile,            #| input PDF
          ImageFile $outfile = output-filename($infile),
          Bool :$trace = False,
          Bool :$debug = False,
-	 Str :$password = '',    #| password for the input PDF, if encrypted
+         UInt :$page,
+	 Str  :$password = '',    #| password for the input PDF, if encrypted
     ) {
 
     my $input = $infile eq q{-}
         ?? $*IN
 	!! $infile;
 
-    my $pdf = PDF::Class.open( $input, :$password);
-    PDF::To::Cairo.save-as($pdf, $outfile, :$trace, :$debug);
+    my PDF::Class $pdf .= open( $input, :$password);
+    PDF::To::Cairo.save-as($pdf, $outfile, :$page, :$trace, :$debug);
 }
 
 =begin pod
@@ -45,19 +46,22 @@ pdf2image.p6 - Convert a PDF to PNG, or SVG images, using Perl 6!
  pdf2png.p6 [options] infile.pdf [outspec.png]
 
  Options:
-   --pasword=str       # provide a password for an encrypted PDF
+   --password=str       # provide a password for an encrypted PDF
+   --page=n             # render just this page
+   --trace --debug      # trace or debug rendering
 
 =head1 DESCRIPTION
 
 This program bursts a multiple page into single page PNG files.
 
-By default, the output pdf will be named infile-001.png infile-002.png ...
+By default, the output pdf will be named infile-001.png infile-
+                002.png ...
 
 The `outspec`, if present, will be used as a 'sprintf' template
 for generation of the individual output PNG files.
 
 ** This is neither fast, or complete ** It exists to exercise other
-components in the Perl 6 ecosystem, including PDF::Content and Cairo.
+components in the Raku ecosystem, including PDF::Content and Cairo.
 
 =head1 SEE ALSO
 

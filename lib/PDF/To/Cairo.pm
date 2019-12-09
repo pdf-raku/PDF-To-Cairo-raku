@@ -70,6 +70,7 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method !set-color($_, $alpha) {
         need PDF::ColorSpace::ICCBased;
+        need PDF::ColorSpace::Separation;
         my ($cs, $colors) = .kv;
         given $cs {
             when PDF::ColorSpace::ICCBased {
@@ -78,6 +79,14 @@ class PDF::To::Cairo:ver<0.0.2> {
                     // [Mu, 'DeviceGray', Mu, 'DeviceRGB', 'DeviceCMYK'][+$colors];
                 self!set-color($_ => $colors, $alpha)
                     with $alternate;
+            }
+            when PDF::ColorSpace::Separation {
+                # use the Alternative color-space
+                with .AlternateSpace -> $alt {
+                    $colors := .calculator.calc($colors)
+                        with .TintTransform;
+                    self!set-color($alt => $colors, $alpha)
+                }
             }
             when 'DeviceRGB' {
                 $!ctx.rgba( |$colors, $alpha );
@@ -496,13 +505,13 @@ class PDF::To::Cairo:ver<0.0.2> {
         $surface.finish;
     }
 
-    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.'('png'|'svg') $/, |c) {
+    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.'('png'|'svg') $/, UInt :page($n), |c) {
         my \format = $0.lc;
         my UInt $pages = $pdf.page-count;
         my Cache $cache .= new;
 
         for 1 .. $pages -> UInt $page-num {
-
+            next if $n.defined && $page-num != $n;
             my $img-filename = $outfile;
             if $outfile.index("%").defined {
                 $img-filename = $outfile.sprintf($page-num);
