@@ -24,7 +24,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     my class Cache {
         has Cairo::Surface %.form{Any};
         has Cairo::Surface %.pattern{Any};
-        has %.font;
+        has %.font{Any};
     }
     has Cache $.cache .= new;
     has Bool $.trace;
@@ -280,7 +280,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     method SetFont($font-key, $font-size) {
         $!ctx.set_font_size($font-size);
         with $*gfx.resource-entry('Font', $font-key) {
-            $!current-font = $!cache.font{$font-key} //= do {
+            $!current-font = $!cache.font{$_} //= do {
                 my $font-obj = PDF::Font::Loader.load-font: :dict($_);
                 my $ft-face = $font-obj.face.native;
                 my Cairo::Font $cairo-font .= create(
@@ -306,7 +306,6 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
     method SetTextRender(Int) { }
     method !show-text($text) {
-
         $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
 
         my \text-render = $*gfx.TextRender;

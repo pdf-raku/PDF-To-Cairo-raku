@@ -13,4 +13,4 @@ Current renders:
 - some (mostly PNG like) image XObjects (depends on state
   of PDF::Class PDF::Image.to-png() method)
 - Gray, RGB, CMYK, DeviceN and Separation color-spaces
-- Tiling patterns (not gradients)
+- Tiling patterns (not shading)
