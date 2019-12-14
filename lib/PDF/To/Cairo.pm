@@ -11,15 +11,15 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Font::Loader:ver(v0.2.3+);
+    use Method::Also;
 
     has $.content is required handles <width height>;
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
     has Cairo::Context $.ctx .= new: $!surface;
     has List $.current-font;
     method current-font { $!current-font[0] }
-    has Hash @!save;
-    has Numeric $!tx = 0.0;
-    has Numeric $!ty = 0.0;
+    has Hash @!gsave;
+    has Numeric ($!tx = 0.0, $!ty = 0.0); # text flow
     has Numeric $!hscale = 1.0;
     my class Cache {
         has Cairo::Surface %.form{Any};
@@ -86,7 +86,7 @@ class PDF::To::Cairo:ver<0.0.2> {
                 with .AlternateSpace -> $alt {
                     $colors := .calculator.calc($colors)
                         with .TintTransform;
-                    self!set-color($alt => $colors, $alpha)
+                    self!set-color($alt => $colors, $alpha);
                 }
             }
             when 'DeviceRGB' {
@@ -138,12 +138,12 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method Save()      {
         $!ctx.save;
-        @!save.push: %( :$!current-font );
+        @!gsave.push: %( :$!current-font );
     }
     method Restore()   {
         $!ctx.restore;
-        if @!save {
-            with @!save.pop {
+        if @!gsave {
+            with @!gsave.pop {
                 $!current-font = .<current-font>;
             }
         }
@@ -182,16 +182,6 @@ class PDF::To::Cairo:ver<0.0.2> {
         temp $!ctx.fill_rule = Cairo::FILL_RULE_EVEN_ODD;
         self.CloseFillStroke;
     }
-    method SetStrokeRGB(*@) {}
-    method SetFillRGB(*@) {}
-    method SetStrokeCMYK(*@) {}
-    method SetFillCMYK(*@) {}
-    method SetStrokeGray(*@) {}
-    method SetFillGray(*@) {}
-    method SetStrokeColorSpace($_) {}
-    method SetFillColorSpace($_) {}
-    method SetStrokeColorN(*@) {}
-    method SetFillColorN(*@) {}
 
     method EndPath() { $!ctx.new_path }
 
@@ -226,8 +216,6 @@ class PDF::To::Cairo:ver<0.0.2> {
     method SetLineWidth(Numeric $lw) {
         $!ctx.line_width = $lw;
     }
-
-    method SetGraphicsState($gs) { }
 
     method CurveTo(Numeric $x1, Numeric $y1, Numeric $x2, Numeric $y2, Numeric $x3, Numeric $y3) {
         my \c1 = |self!coords($x1, $y1);
@@ -276,7 +264,6 @@ class PDF::To::Cairo:ver<0.0.2> {
     method ConcatMatrix(*@matrix) {
         self!concat-matrix(|@matrix);
     }
-    method BeginText() { $!tx = 0.0; $!ty = 0.0; }
     method SetFont($font-key, $font-size) {
         $!ctx.set_font_size($font-size);
         with $*gfx.resource-entry('Font', $font-key) {
@@ -296,46 +283,31 @@ class PDF::To::Cairo:ver<0.0.2> {
             $!ctx.select_font_face('courier', Cairo::FONT_WEIGHT_NORMAL, Cairo::FONT_SLANT_NORMAL);
         }
     }
-    method SetTextMatrix(*@) {
-        $!tx = 0.0;
-        $!ty = 0.0;
-    }
-    method TextMove(Numeric, Numeric) {
-        $!tx = 0.0;
-        $!ty = 0.0;
-    }
-    method SetTextRender(Int) { }
-    method !show-text($text) {
-        $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
 
-        my \text-render = $*gfx.TextRender;
-        given text-render {
-            when FillText {
-                self!set-fill-color;
-                $!ctx.show_text($text);
-            }
-            when InvisableText {
-            }
-            default { # other modes
-                my \fill   = ?(text-render ~~ FillText|FillOutlineText|FillClipText|FillOutlineClipText);
-                my \stroke = ?(text-render ~~ OutlineText|FillOutlineText|OutlineClipText|FillOutlineClipText);
-                my \clip   = ?(text-render ~~ FillClipText|OutlineClipText|ClipText);
-
-                $!ctx.text_path($text);
-
-                if fill {
-                    self!set-fill-color;
-                    $!ctx.fill: :preserve(stroke||clip);
-                }
-
-                if stroke {
-                    self!set-stroke-color;
-                    $!ctx.stroke: :preserve(clip);
-                }
-           }
+    method !text-path($text) {
+        unless $*gfx.TextRender == InvisableText {
+            $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
+            $!ctx.text_path($text);
         }
         $!tx += $!ctx.text_extents($text).x_advance * $!hscale;
         $!ty += $!ctx.text_extents($text).y_advance;
+    }
+
+    method !text-paint() {
+        my \text-render = $*gfx.TextRender;
+        my \fill   = ?(text-render ~~ FillText|FillOutlineText|FillClipText|FillOutlineClipText);
+        my \stroke = ?(text-render ~~ OutlineText|FillOutlineText|OutlineClipText|FillOutlineClipText);
+        my \clip   = ?(text-render ~~ FillClipText|OutlineClipText|ClipText);
+
+        if fill {
+            self!set-fill-color;
+            $!ctx.fill: :preserve(stroke||clip);
+        }
+
+        if stroke {
+            self!set-stroke-color;
+            $!ctx.stroke: :preserve(clip);
+        }
     }
 
     method !text(&stuff) {
@@ -345,12 +317,13 @@ class PDF::To::Cairo:ver<0.0.2> {
         $!ctx.scale($!hscale, 1)
             unless $!hscale =~= 1.0;
         &stuff();
+        self!text-paint();
         $!ctx.restore;
     }
 
     method ShowText($text-encoded) {
         self!text: {
-            self!show-text: $.current-font.decode($text-encoded, :str);
+            self!text-path: $.current-font.decode($text-encoded, :str);
         }
     }
     method ShowSpaceText(List $text) {
@@ -358,7 +331,7 @@ class PDF::To::Cairo:ver<0.0.2> {
             my Numeric $font-size = $*gfx.Font[1];
             for $text.list {
                 when Str {
-                    self!show-text: $.current-font.decode($_, :str);
+                    self!text-path: $.current-font.decode($_, :str);
                 }
                 when Numeric {
                     $!tx -= $_ * $font-size / 1000;
@@ -366,26 +339,12 @@ class PDF::To::Cairo:ver<0.0.2> {
             }
         }
     }
-    method SetTextLeading($) { }
-    method SetTextRise($) { }
-    method SetHorizScaling($) { }
-    method TextNextLine() {
-        $!tx = 0.0;
-        $!ty = 0.0;
-    }
-    method TextMoveSet(Numeric, Numeric) {
-        $!tx = 0.0;
-        $!ty = 0.0;
-    }
-    method MoveShowText($text-encoded) {
+
+    method MoveShowText($text-encoded) is also<MoveSetShowText> {
         $!tx = 0.0;
         $!ty = 0.0;
         self.ShowText($text-encoded);
     }
-    method MoveSetShowText(Numeric, Numeric, $text-encoded) {
-        self.MoveShowText($text-encoded);
-    }
-    method EndText()  { $!tx = 0.0; $!ty = 0.0; }
 
     method !make-form($xobject) {
         $!cache.form{$xobject} //= do {
@@ -467,9 +426,23 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
 
+    ## -- Pass-Through Methods -- ##
+    # - These methods update the graphics state for later reference.
+    method SetGraphicsState(*@) is also<
+        SetStrokeRGB SetFillRGB SetStrokeCMYK SetFillCMYK SetStrokeGray SetFillGray
+        SetStrokeColorSpace SetFillColorSpace SetStrokeColorN SetFillColorN
+    > { }
+
+    # - These methods update the text state for later reference
+    method SetTextLeading($) is also<SetTextRise SetHorizScaling SetTextRender> { }
+    # These methods update text state and also reset text-flow
+    method BeginText(*@) is also<EndText SetTextMatrix TextMove TextNextLine TextMoveSet> {
+        $!tx = 0.0;
+        $!ty = 0.0;
+    }
+    # - These methods have no affect on rendering
     method BeginMarkedContent(Str) { }
-    subset HashOrStr where Hash|Str;
-    method BeginMarkedContentDict(Str, HashOrStr) { }
+    method BeginMarkedContentDict(Str, $) { }
     method EndMarkedContent() { }
 
     method callback{
