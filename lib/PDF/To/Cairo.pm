@@ -27,7 +27,6 @@ class PDF::To::Cairo:ver<0.0.2> {
         has %.font{Any};
     }
     has Cache $.cache .= new;
-    has Bool $.trace;
     has UInt $.nesting = 0;
 
     submethod TWEAK(
@@ -242,9 +241,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         $!ctx.rectangle( |self!coords($x, $y), $w, - $h);
     }
 
-    method Clip {
-        $!ctx.clip;
-    }
+    method Clip { $!ctx.clip; }
 
     sub matrix-to-cairo(Num(Numeric) $scale-x, Num(Numeric) $skew-x,
                         Num(Numeric) $skew-y,  Num(Numeric) $scale-y,
@@ -349,14 +346,14 @@ class PDF::To::Cairo:ver<0.0.2> {
     method !make-form($xobject) {
         $!cache.form{$xobject} //= do {
             my $nesting = $!nesting + 1;
-            self.render: :content($xobject), :transparent, :$!cache, :$!trace, :$nesting;
+            self.render: :content($xobject), :transparent, :$!cache, :$nesting;
         }
     }
     need PDF::Pattern::Tiling;
     method !make-tiling-pattern(PDF::Pattern::Tiling $pattern) {
         my $img = $!cache.pattern{$pattern} //= do {
             my $nesting = $!nesting + 1;
-            my $image = self.render: :content($pattern), :transparent, :$!cache, :$!trace, :$nesting;
+            my $image = self.render: :content($pattern), :transparent, :$!cache, :$nesting;
             my $padded-img = Cairo::Image.create(
                 Cairo::FORMAT_ARGB32,
                 $pattern<XStep> // $image.width,
@@ -368,9 +365,10 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
         my Cairo::Pattern::Surface $patt .= create($img.surface);
         $patt.extend = Cairo::Extend::EXTEND_REPEAT;
-        my $ctm = matrix-to-cairo(|$*gfx.CTM);
-        $patt.matrix = $ctm.multiply(matrix-to-cairo(|$_).invert)
-            with $pattern.Matrix;
+        with $pattern.Matrix {
+            my $ctm = matrix-to-cairo(|$*gfx.CTM);
+            $patt.matrix = $ctm.multiply(matrix-to-cairo(|$_).invert);
+        }
         $patt;
     }
     method !make-image(PDF::XObject::Image $xobject) {
@@ -435,7 +433,7 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     # - These methods update the text state for later reference
     method SetTextLeading($) is also<SetTextRise SetHorizScaling SetTextRender> { }
-    # These methods update text state and also reset text-flow
+    # - These methods update text state and also reset text-flow
     method BeginText(*@) is also<EndText SetTextMatrix TextMove TextNextLine TextMoveSet> {
         $!tx = 0.0;
         $!ty = 0.0;
@@ -448,8 +446,6 @@ class PDF::To::Cairo:ver<0.0.2> {
     method callback{
         sub ($op, *@args) {
             my $method = OpCode($op).key;
-            note ('  ' x $!nesting) ~ "$method\({@args.map(*.perl).join: ", "}\)"
-                if $!trace;
             self."$method"(|@args);
             given $!ctx.status -> $status {
                 die "bad Cairo status $status {Cairo::cairo_status_t($status).key} after $method\({@args}\) operation"
@@ -469,8 +465,8 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
 
-    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.png' $/, |c) {
-        my Cairo::Surface $surface = self.render: :$content, |c;
+    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.png' $/, :$cache = Cache.new, |c) {
+        my Cairo::Surface $surface = self.render: :$content, :$cache, |c;
         $surface.write_png: $filename;
     }
 
