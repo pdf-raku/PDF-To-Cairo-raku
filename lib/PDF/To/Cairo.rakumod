@@ -30,8 +30,8 @@ class PDF::To::Cairo:ver<0.0.2> {
     has UInt $.nesting = 0;
 
     submethod TWEAK(
-                    Bool :$debug,
-                    :$gfx = $!content.gfx(:!render, :$debug),
+                    Bool :$trace,
+                    :$gfx = $!content.gfx(:$trace),
                     Bool :$feed = True,
                     Bool :$transparent = False,
         ) {
@@ -48,7 +48,7 @@ class PDF::To::Cairo:ver<0.0.2> {
             my $pre-gfx = $content.new-gfx: :@callback;
             $pre-gfx.ops: $content.pre-gfx.ops;
         }
-        temp $content.gfx(:!render).callback = @callback;
+        temp $content.gfx.callback = @callback;
         $content.render;
         $obj.surface;
     }
@@ -498,7 +498,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
 
-    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.pdf' $/) {
+    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.pdf' $/, |c) {
         my $page1 = $pdf.page(1);
         my Cairo::Surface::PDF $surface .= create($outfile, $page1.width, $page1.height);
         my UInt $pages = $pdf.page-count;
@@ -506,7 +506,7 @@ class PDF::To::Cairo:ver<0.0.2> {
 
         for 1 .. $pages -> UInt $page-num {
             my $content = $pdf.page($page-num);
-            PDF::To::Cairo.render: :$content, :$surface, :$cache;
+            PDF::To::Cairo.render: :$content, :$surface, :$cache, |c;
             $surface.show_page;
         }
         $surface.finish;
