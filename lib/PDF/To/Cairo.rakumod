@@ -266,7 +266,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         with $*gfx.resource-entry('Font', $font-key) {
             $!current-font = $!cache.font{$_} //= do {
                 my $font-obj = PDF::Font::Loader.load-font: :dict($_);
-                my $ft-face = $font-obj.face.native;
+                my $ft-face = $font-obj.face.raw;
                 my Cairo::Font $cairo-font .= create(
                     $ft-face, :free-type,
                 );
@@ -374,7 +374,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     method !make-image(PDF::XObject::Image $xobject) {
         $!cache.form{$xobject} //= do {
             my Cairo::Image $surface;
-            try {
+            do {
                 CATCH {
                     when X::NYI {
                         # draw stub placeholder rectangle

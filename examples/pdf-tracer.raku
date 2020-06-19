@@ -1,17 +1,17 @@
 #!/usr/bin/env perl6
 use v6.c;
-use PDF::Zen;
-use PDF::Render::Cairo;
+use PDF::Class;
+use PDF::Page;
+use PDF::To::Cairo;
 use PDF::Content::Ops :OpCode;
 use GTK::Simple;
 use GTK::Simple::DrawingArea;
 use Cairo;
 
 class PDF::Tracer {
+    has PDF::Class $.pdf is required;
 
-    has PDF::Zen $.pdf is required;
-
-    my class Renderer is PDF::Render::Cairo {
+    my class Renderer is PDF::To::Cairo {
         has Numeric $.delay = 1.0;
         my uint $counter = 0;
         method callback{
@@ -32,11 +32,11 @@ class PDF::Tracer {
         constant Border = 5;
         gtk_simple_use_cairo;
 
-        my $app = GTK::Simple::App.new: :title("Tracing $file page $page-num");
-        my $da = GTK::Simple::DrawingArea.new;
-        my $page = $!pdf.page($page-num);
+        my GTK::Simple::App $app .= new: :title("Tracing $file page $page-num");
+        my GTK::Simple::DrawingArea $da .= new;
+        my PDF::Page $page = $!pdf.page($page-num);
         $da.size-request($page.width + 2 * Border, $page.height + 2 * Border);
-        my $ctx = $da.add-draw-handler( sub ($da, $ctx) { self.render($da, $ctx, $page); } );
+        my $ctx = $da.add-draw-handler: -> $da, $ctx { self.render($da, $ctx, $page); };
         $app.set-content( $da );
         $app.border-width = Border;
         $app.run;
@@ -53,7 +53,7 @@ sub MAIN(Str $infile,            #| input PDF
         ?? $*IN
 	!! $infile;
 
-    my $pdf = PDF::Zen.open( $input, :$password);
+    my PDF::Class $pdf .= open: $input, :$password;
     my $tracer = PDF::Tracer.new: :$pdf;
     $tracer.trace-page($infile, $page);
 }

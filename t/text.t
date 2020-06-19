@@ -10,7 +10,7 @@ use Cairo;
 my PDF::Class $pdf .= new;
 my PDF::Page $page = $pdf.add-page;
 $page.MediaBox = PageSizes::Letter;
-my PDF::To::Cairo $feed .= new: :content($page), :trace;
+my PDF::To::Cairo $feed .= new: :content($page), :!trace;
 $page.graphics: -> $gfx {
     my $font = $page.core-font( :family<Helvetica> );
     my $y = $page.MediaBox[3];
