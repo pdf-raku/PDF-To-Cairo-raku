@@ -261,23 +261,22 @@ class PDF::To::Cairo:ver<0.0.2> {
     method ConcatMatrix(*@matrix) {
         self!concat-matrix(|@matrix);
     }
-    method SetFont($font-key, $font-size) {
-        $!ctx.set_font_size($font-size);
-        with $*gfx.resource-entry('Font', $font-key) {
-            $!current-font = $!cache.font{$_} //= do {
-                my $font-obj = PDF::Font::Loader.load-font: :dict($_);
-                my $ft-face = $font-obj.face.raw;
-                my Cairo::Font $cairo-font .= create(
-                    $ft-face, :free-type,
-                );
-                [$font-obj, $cairo-font]
-            }
-            $!ctx.set_font_face($!current-font[1]);
+    method !set-font(Hash $_)  {
+        $!current-font = $!cache.font{$_} //= do {
+            my $font-obj = PDF::Font::Loader.load-font: :dict($_);
+            my $ft-face = $font-obj.face.raw;
+            my Cairo::Font $cairo-font .= create(
+                $ft-face, :free-type,
+            );
+            [$font-obj, $cairo-font]
         }
-        else {
-            warn "unable to locate Font in resource dictionary: $font-key";
-            $!current-font = [PDF::Content::Util::Font.core-font('courier'), ];
-            $!ctx.select_font_face('courier', Cairo::FONT_WEIGHT_NORMAL, Cairo::FONT_SLANT_NORMAL);
+        $!ctx.set_font_face($!current-font[1]);
+    }
+
+    method SetFont($,$?) is also<SetGraphicsState> {
+        with $*gfx.Font {
+            self!set-font: .[0];
+            $!ctx.set_font_size: .[1];
         }
     }
 
@@ -426,8 +425,8 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     ## -- Pass-Through Methods -- ##
     # - These methods update the graphics state for later reference.
-    method SetGraphicsState(*@) is also<
-        SetStrokeRGB SetFillRGB SetStrokeCMYK SetFillCMYK SetStrokeGray SetFillGray
+    method SetStrokeRGB(*@) is also<
+        SetFillRGB SetStrokeCMYK SetFillCMYK SetStrokeGray SetFillGray
         SetStrokeColorSpace SetFillColorSpace SetStrokeColorN SetFillColorN
     > { }
 
