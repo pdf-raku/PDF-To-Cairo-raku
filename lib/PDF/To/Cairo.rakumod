@@ -23,7 +23,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     has Numeric $!hscale = 1.0;
     my class Cache {
         has Cairo::Surface %.form{Any};
-        has Cairo::Surface %.pattern{Any};
+        has %.pattern{Any};
         has %.font{Any};
     }
     has Cache $.cache .= new;
@@ -107,7 +107,7 @@ class PDF::To::Cairo:ver<0.0.2> {
                     with $*gfx.resource-entry('Pattern', $_) -> $pattern {
                         given $pattern.PatternType {
                             when 1 { # Tiling
-                                my $img = self!make-tiling-pattern($pattern);
+                                my $img = self!make-tiling-pattern($pattern, $alpha);
                                 $!ctx.pattern: $img;
                             }
                             when 2 { # Shading
@@ -281,12 +281,16 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
 
     method !text-path($text) {
+
         unless $*gfx.TextRender == InvisableText {
             $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
             $!ctx.text_path($text);
         }
-        $!tx += $!ctx.text_extents($text).x_advance * $!hscale;
-        $!ty += $!ctx.text_extents($text).y_advance;
+
+        given $!ctx.text_extents($text) {
+            $!tx += .x_advance * $!hscale;
+            $!ty += .y_advance;
+        }
     }
 
     method !text-paint() {
@@ -349,17 +353,17 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
     need PDF::Pattern::Tiling;
-    method !make-tiling-pattern(PDF::Pattern::Tiling $pattern) {
-        my $img = $!cache.pattern{$pattern} //= do {
+    method !make-tiling-pattern(PDF::Pattern::Tiling $pattern, $alpha) {
+        my $img = $!cache.pattern{$pattern}{$alpha} //= do {
             my $nesting = $!nesting + 1;
-            my $image = self.render: :content($pattern), :transparent, :$!cache, :$nesting;
+            my $image = self!make-form($pattern);
             my $padded-img = Cairo::Image.create(
                 Cairo::FORMAT_ARGB32,
                 $pattern<XStep> // $image.width,
                 $pattern<YStep> // $image.height);
             my Cairo::Context $ctx .= new($padded-img);
             $ctx.set_source_surface($image);
-            $ctx.paint;
+            $ctx.paint_with_alpha($alpha);
             $padded-img;
         }
         my Cairo::Pattern::Surface $patt .= create($img.surface);
