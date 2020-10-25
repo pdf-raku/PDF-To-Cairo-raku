@@ -400,38 +400,50 @@ class PDF::To::Cairo:ver<0.0.2> {
             $surface;
         }
     }
+    method !place-image(PDF::XObject $xobject) {
+        $!ctx.save;
+
+        my $surface = do given $xobject<Subtype> {
+            when 'Form' {
+                self!make-form($xobject);
+            }
+            when 'Image' {
+                $!ctx.scale( 1/$xobject.width, 1/$xobject.height );
+                self!make-image($xobject);
+            }
+        }
+
+        with $surface {
+            $!ctx.translate(0, -$xobject.height);
+            $!ctx.set_source_surface($_);
+            $!ctx.paint_with_alpha($*gfx.FillAlpha);
+        }
+
+        $!ctx.restore;
+    }
     method XObject($key) {
-        with $*gfx.resource-entry('XObject', $key) -> $xobject {
-            $!ctx.save;
-
-            my $surface = do given $xobject<Subtype> {
-                when 'Form' {
-                    self!make-form($xobject);
-                }
-                when 'Image' {
-                    $!ctx.scale( 1/$xobject.width, 1/$xobject.height );
-                    self!make-image($xobject);
-                }
-            }
-
-            with $surface {
-                $!ctx.translate(0, -$xobject.height);
-                $!ctx.set_source_surface($_);
-                $!ctx.paint_with_alpha($*gfx.FillAlpha);
-            }
-
-            $!ctx.restore;
+        with $*gfx.resource-entry('XObject', $key) {
+            self!place-image($_);
         }
         else {
             warn "unable to locate XObject in resource dictionary: $key";
         }
     }
 
+    has %!image-dict;
+    method BeginImage(%!image-dict) { }
+    method ImageData($encoded) {
+        my %dict = PDF::XObject::Image.inline-to-xobject(%!image-dict);
+        my PDF::XObject::Image $image = PDF::COS.coerce: :stream{ :%dict, :$encoded };
+        self!place-image: $image;
+    }
+    method EndImage() { }
+
     ## -- Pass-Through Methods -- ##
     # - These methods update the graphics state for later reference.
     method SetStrokeRGB(*@) is also<
         SetFillRGB SetStrokeCMYK SetFillCMYK SetStrokeGray SetFillGray
-        SetStrokeColorSpace SetFillColorSpace SetStrokeColorN SetFillColorN
+        SetStrokeColorSpace SetFillColorSpace SetStrokeColor SetFillColor SetStrokeColorN SetFillColorN
     > { }
 
     # - These methods update the text state for later reference
@@ -445,6 +457,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     method BeginMarkedContent(Str) { }
     method BeginMarkedContentDict(Str, $) { }
     method EndMarkedContent() { }
+    method MarkPointDict(Str, $) { }
 
     method callback{
         sub ($op, *@args) {
