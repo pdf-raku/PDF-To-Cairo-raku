@@ -25,6 +25,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         has Cairo::Surface %.form{Any};
         has %.pattern{Any};
         has %.font{Any};
+        has %.color{Any};
     }
     has Cache $.cache .= new;
     has UInt $.nesting = 0;
@@ -65,11 +66,11 @@ class PDF::To::Cairo:ver<0.0.2> {
     method !coords(Numeric \x, Numeric \y) {
         (x, -y);
     }
-
     method !set-color($_, $alpha) {
         need PDF::ColorSpace::ICCBased;
         need PDF::ColorSpace::Separation;
         need PDF::ColorSpace::DeviceN;
+        need PDF::ColorSpace::CalRGB;
         my ($cs, $colors) = .kv;
         given $cs {
             when PDF::ColorSpace::ICCBased {
@@ -87,6 +88,21 @@ class PDF::To::Cairo:ver<0.0.2> {
                         with .TintTransform;
                     self!set-color($alt => $colors, $alpha);
                 }
+            }
+            when PDF::ColorSpace::CalRGB {
+                my $rgb = $!cache.color{$_} //= do {
+                    my \g = .Gamma;
+                    my \m = .Matrix;
+
+                    my @abc[3] = $colors.list;
+                    # todo white/black point adjustments
+                    my @ = (0 .. 2).map: {
+                        m[$_] * (@abc[0] ** g[0])
+                      + m[$_ + 3] * (@abc[1] ** g[1])
+                      + m[$_ + 6] * (@abc[2] ** g[2])
+                    }
+                }
+                self!set-color('DeviceRGB' => $rgb, $alpha);
             }
             when 'DeviceRGB' {
                 $!ctx.rgba( |$colors, $alpha );
