@@ -2,10 +2,11 @@
   "api": "PDF-1.7",
   "auth": "github:p6-pdf",
   "depends": [
-    "Cairo",
+    "Cairo:ver<0.2.7+>",
+    "HarfBuzz",  
     "PDF::Content",
     "PDF::Class",
-    "PDF::Font::Loader",
+    "PDF::Font::Loader:ver<0.4.2+>",
     "Method::Also"
   ],
   "description": "Cairo rendering backend for PDF::Content (experimental)",
@@ -15,6 +16,6 @@
   "provides": {
     "PDF::To::Cairo": "lib/PDF/To/Cairo.rakumod"
   },
-  "source-url": "git://github.com/p6-pdf/PDF-To-Cairo-p6.git",
+  "source-url": "git://github.com/raku-pdf/PDF-To-Cairo-raku.git",
   "version": "0.0.2"
 }

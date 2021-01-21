@@ -8,6 +8,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Class;
     use PDF::XObject::Image;
     need Cairo:ver(v0.2.1+);
+    use HarfBuzz::Shaper;
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Font::Loader:ver(v0.2.3+);
@@ -29,12 +30,13 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
     has Cache $.cache .= new;
     has UInt $.nesting = 0;
+    has Bool $.toy = False;
 
     submethod TWEAK(
-                    Bool :$trace,
-                    :$gfx = $!content.gfx(:$trace),
-                    Bool :$feed = True,
-                    Bool :$transparent = False,
+        Bool :$trace,
+        :$gfx = $!content.gfx(:$trace),
+        Bool :$feed = True,
+        Bool :$transparent = False,
         ) {
         self!init: :$transparent;
         $gfx.callback.push: self.callback
@@ -277,36 +279,46 @@ class PDF::To::Cairo:ver<0.0.2> {
     method ConcatMatrix(*@matrix) {
         self!concat-matrix(|@matrix);
     }
-    method !set-font(Hash $_)  {
+    method !set-font(Hash $_, Numeric $size)  {
         $!current-font = $!cache.font{$_} //= do {
             my $font-obj = PDF::Font::Loader.load-font: :dict($_);
-            my $ft-face = $font-obj.face.raw;
             my Cairo::Font $cairo-font .= create(
-                $ft-face, :free-type,
+                $font-obj.face.raw, :free-type,
             );
-            [$font-obj, $cairo-font]
+            [$font-obj, $cairo-font, $size]
         }
+        $!ctx.set_font_size: $size;
         $!ctx.set_font_face($!current-font[1]);
     }
 
     method SetFont($,$?) is also<SetGraphicsState> {
         with $*gfx.Font {
-            self!set-font: .[0];
-            $!ctx.set_font_size: .[1];
+            self!set-font: .[0], .[1];
         }
     }
 
     method !text-path($text) {
 
         unless $*gfx.TextRender == InvisableText {
-            $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
-            $!ctx.text_path($text);
+            if $!toy {
+                $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
+                $!ctx.text_path($text);
+                given $!ctx.text_extents($text) {
+                    $!tx += .x_advance * $!hscale;
+                    $!ty += .y_advance;
+                }
+            }
+            else {
+                my $ft-face = $!current-font[0].face;
+                my $size = $!current-font[2];
+                my $shaper = HarfBuzz::Shaper.new: :font{:$ft-face, :features[:!kern]}, :buf{:$text};
+                my $glyphs = $shaper.cairo-glyphs(:x($!tx.Num), :y($!ty.Num));
+                $!ctx.glyph_path: $glyphs;
+                $!tx += $glyphs.x-advance * $!hscale;
+                $!ty += $glyphs.y-advance;
+            }
         }
 
-        given $!ctx.text_extents($text) {
-            $!tx += .x_advance * $!hscale;
-            $!ty += .y_advance;
-        }
     }
 
     method !text-paint() {
