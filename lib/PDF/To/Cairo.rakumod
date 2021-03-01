@@ -8,7 +8,8 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Class;
     use PDF::XObject::Image;
     need Cairo:ver(v0.2.1+);
-    use HarfBuzz::Shaper;
+    use HarfBuzz::Font::FreeType;
+    use HarfBuzz::Shaper::Cairo;
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Font::Loader:ver(v0.2.3+);
@@ -17,8 +18,8 @@ class PDF::To::Cairo:ver<0.0.2> {
     has $.content is required handles <width height>;
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
     has Cairo::Context $.ctx .= new: $!surface;
-    has List $.current-font;
-    method current-font { $!current-font[0] }
+    has %!current-font;
+    method current-font { %!current-font<font-obj> }
     has Hash @!gsave;
     has Numeric ($!tx = 0.0, $!ty = 0.0); # text flow
     has Numeric $!hscale = 1.0;
@@ -155,13 +156,13 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method Save()      {
         $!ctx.save;
-        @!gsave.push: %( :$!current-font );
+        @!gsave.push: %( :font(%!current-font.clone) );
     }
     method Restore()   {
         $!ctx.restore;
         if @!gsave {
             with @!gsave.pop {
-                $!current-font = .<current-font>;
+                %!current-font = .<font>;
             }
         }
     }
@@ -279,16 +280,17 @@ class PDF::To::Cairo:ver<0.0.2> {
     method ConcatMatrix(*@matrix) {
         self!concat-matrix(|@matrix);
     }
-    method !set-font(Hash $_, Numeric $size)  {
-        $!current-font = $!cache.font{$_} //= do {
-            my $font-obj = PDF::Font::Loader.load-font: :dict($_);
+    method !set-font(Hash $dict, Numeric $size)  {
+        %!current-font = $!cache.font{$dict} //= do {
+            my $font-obj = PDF::Font::Loader.load-font: :$dict;
             my Cairo::Font $cairo-font .= create(
                 $font-obj.face.raw, :free-type,
             );
-            [$font-obj, $cairo-font, $size]
+            %( :$font-obj, :$cairo-font );
         }
+        %!current-font ,= :$size;
         $!ctx.set_font_size: $size;
-        $!ctx.set_font_face($!current-font[1]);
+        $!ctx.set_font_face(%!current-font<cairo-font>);
     }
 
     method SetFont($,$?) is also<SetGraphicsState> {
@@ -309,10 +311,13 @@ class PDF::To::Cairo:ver<0.0.2> {
                 }
             }
             else {
-                my $ft-face = $!current-font[0].face;
-                my $size = $!current-font[2];
-                my $shaper = HarfBuzz::Shaper.new: :font{:$ft-face, :features[:!kern]}, :buf{:$text};
-                my $glyphs = $shaper.cairo-glyphs(:x($!tx.Num), :y($!ty.Num));
+                my $ft-face = %!current-font<font-obj>.face;
+                my $size = %!current-font<size>;
+                my HarfBuzz::Font::FreeType() $font = %( :$ft-face, :features[:!kern], :$size );
+                my HarfBuzz::Shaper::Cairo $shaper .= new: :$font, :buf{:$text};
+                my Num() $x = $!tx / $!hscale;
+                my Num() $y = $!ty - $*gfx.TextRise;
+                my Cairo::Glyphs $glyphs = $shaper.cairo-glyphs(:$x, :$y);
                 $!ctx.glyph_path: $glyphs;
                 $!tx += $glyphs.x-advance * $!hscale;
                 $!ty += $glyphs.y-advance;

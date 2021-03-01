@@ -1,9 +1,10 @@
 {
   "api": "PDF-1.7",
-  "auth": "github:p6-pdf",
+  "auth": "cpan:WARRINGD",
   "depends": [
     "Cairo:ver<0.2.7+>",
-    "HarfBuzz",  
+    "HarfBuzz::Font::FreeType",
+    "HarfBuzz::Shaper::Cairo",
     "PDF::Content",
     "PDF::Class",
     "PDF::Font::Loader:ver<0.4.2+>",
