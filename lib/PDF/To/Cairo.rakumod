@@ -13,6 +13,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Content::Graphics;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Font::Loader:ver(v0.2.3+);
+    use Font::FreeType::Face;
     use Method::Also;
 
     has $.content is required handles <width height>;
@@ -58,7 +59,8 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
 
     method !init(:$transparent) {
-        $!ctx.translate(0, self.height);
+        my \bbox := $!content.bbox;
+        $!ctx.translate(-bbox[0], bbox[3]);
         $!ctx.line_width = 1.0;
         unless $transparent {
             $!ctx.rgb(1.0, 1.0, 1.0);
@@ -301,27 +303,28 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method !text-path($text) {
 
-        unless $*gfx.TextRender == InvisableText {
-            if $!toy {
+        if $!toy {
+            unless $*gfx.TextRender == InvisableText {
                 $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
                 $!ctx.text_path($text);
-                given $!ctx.text_extents($text) {
-                    $!tx += .x_advance * $!hscale;
-                    $!ty += .y_advance;
-                }
             }
-            else {
-                my $ft-face = %!current-font<font-obj>.face;
-                my $size = %!current-font<size>;
-                my HarfBuzz::Font::FreeType() $font = %( :$ft-face, :features[:!kern], :$size );
-                my HarfBuzz::Shaper::Cairo $shaper .= new: :$font, :buf{:$text};
-                my Num() $x = $!tx / $!hscale;
-                my Num() $y = $!ty - $*gfx.TextRise;
-                my Cairo::Glyphs $glyphs = $shaper.cairo-glyphs(:$x, :$y);
-                $!ctx.glyph_path: $glyphs;
-                $!tx += $glyphs.x-advance * $!hscale;
-                $!ty += $glyphs.y-advance;
+            given $!ctx.text_extents($text) {
+                $!tx += .x_advance * $!hscale;
+                $!ty += .y_advance;
             }
+        }
+        else {
+            my Font::FreeType::Face $ft-face = %!current-font<font-obj>.face;
+            my Numeric $size = %!current-font<size>;
+            my HarfBuzz::Font::FreeType() $font = %( :$ft-face, :features[:!kern], :$size );
+            my HarfBuzz::Shaper::Cairo $shaper .= new: :$font, :buf{:$text};
+            my Num() $x = $!tx / $!hscale;
+            my Num() $y = $!ty - $*gfx.TextRise;
+            my Cairo::Glyphs $glyphs = $shaper.cairo-glyphs(:$x, :$y);
+            $!ctx.glyph_path($glyphs)
+                unless $*gfx.TextRender == InvisableText;
+            $!tx += $glyphs.x-advance * $!hscale;
+            $!ty += $glyphs.y-advance;
         }
 
     }
