@@ -19,10 +19,11 @@ multi sub output-filename(Str $infile) is default {
 
 subset ImageFile of Str where /:i '.' [png|svg|pdf]/;
 
-sub MAIN(Str $infile,            #| input PDF
-         ImageFile $outfile = output-filename($infile),
-         Bool :$trace = False,
-         UInt :$page,
+sub MAIN(Str $infile,             #| input PDF
+         ImageFile $outfile = output-filename($infile), #| output PNG, SVG or PDF file
+         Bool :$trace = False,    #| trace execution
+         Bool :$shaped = False,   #| used shaped text rendering
+         UInt :$page,             #| page to render
 	 Str  :$password = '',    #| password for the input PDF, if encrypted
     ) {
 
@@ -31,7 +32,7 @@ sub MAIN(Str $infile,            #| input PDF
 	!! $infile;
 
     my PDF::Class $pdf .= open( $input, :$password);
-    PDF::To::Cairo.save-as($pdf, $outfile, :$page, :$trace);
+    PDF::To::Cairo.save-as($pdf, $outfile, :$page, :$trace, :$shaped);
 }
 
 =begin pod

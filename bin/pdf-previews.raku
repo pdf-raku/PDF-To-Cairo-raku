@@ -7,7 +7,8 @@ sub MAIN(
     Str $directory = '.',         #| directory to be scanned for PDFS
     Str :$previews = '.previews', #| where to place previews
     Str :$password = '',          #| password for the input PDF, if encrypted
-    Bool :$recursive = False;
+    Bool :$recursive = False,
+    Bool :$shaped = False,        #| used shaped text rendering
     ) {
 
     my $preview-dir = $directory.IO.add($previews);
@@ -43,19 +44,17 @@ pdf-previews.pl - Scan a directory for PDF files. Create PNG previews
 
 =head1 SYNOPSIS
 
- pdf-previews.pl [directory] --previews=directory
+ pdf-previews.pl [directory] --previews=directory --shaped
 
  Options:
-   --pasword=str       # provide default password for encrypted PDF files
+   --password=str       # provide default password for encrypted PDF files
+   --shaped             # used shaped text rendering (experimental)
 
 =head1 DESCRIPTION
 
-This program bursts a multiple page into single page PNG files.
+This program scans a directory of PDF files and generates previews.
 
-By default, the output pdf will be named infile001.png infile002.png ...
-
-The `outspec`, if present, will be used as a 'sprintf' template
-for generation of the individual per-page output PNG files.
+The preciew files are of type PNG and are placed into a subdiretory named .previews. They are named .previews/<base-name>-<nnn>.png, where <nnn> is the page number.
 
 ** This is neither fast, or complete ** It exists to exercise other
 components in the Perl 6 ecosystem, including PDF::Content and Cairo.
@@ -64,7 +63,7 @@ components in the Perl 6 ecosystem, including PDF::Content and Cairo.
 
 PDF::Class
 PDF::Content
-PDF::Render::Cairo
+PDF::To::Cairo
 
 =head1 AUTHOR
 

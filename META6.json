@@ -1,9 +1,8 @@
 {
-  "api": "PDF-1.7",
   "auth": "cpan:WARRINGD",
   "depends": [
     "Cairo:ver<0.2.7+>",
-    "HarfBuzz::Font::FreeType",
+    "HarfBuzz::Font::FreeType:ver<0.0.5+>",
     "HarfBuzz::Shaper::Cairo",
     "PDF::Content",
     "PDF::Class",

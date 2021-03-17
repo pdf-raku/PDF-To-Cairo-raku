@@ -32,7 +32,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
     has Cache $.cache .= new;
     has UInt $.nesting = 0;
-    has Bool $.toy = False;
+    has Bool $.shaped = False; # experimental shaped rendering
 
     submethod TWEAK(
         Bool :$trace,
@@ -303,17 +303,7 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method !text-path($text) {
 
-        if $!toy {
-            unless $*gfx.TextRender == InvisableText {
-                $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
-                $!ctx.text_path($text);
-            }
-            given $!ctx.text_extents($text) {
-                $!tx += .x_advance * $!hscale;
-                $!ty += .y_advance;
-            }
-        }
-        else {
+        if $!shaped {
             my Font::FreeType::Face $ft-face = %!current-font<font-obj>.face;
             my Numeric $size = %!current-font<size>;
             my HarfBuzz::Font::FreeType() $font = %( :$ft-face, :features[:!kern], :$size );
@@ -325,6 +315,16 @@ class PDF::To::Cairo:ver<0.0.2> {
                 unless $*gfx.TextRender == InvisableText;
             $!tx += $glyphs.x-advance * $!hscale;
             $!ty += $glyphs.y-advance;
+        }
+        else {
+            unless $*gfx.TextRender == InvisableText {
+                $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
+                $!ctx.text_path($text);
+            }
+            given $!ctx.text_extents($text) {
+                $!tx += .x_advance * $!hscale;
+                $!ty += .y_advance;
+            }
         }
 
     }
@@ -348,7 +348,7 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method !text(&stuff) {
         $!ctx.save;
-        self!concat-matrix(|$*gfx.TextMatrix);
+        self!concat-matrix: |$*gfx.TextMatrix;
         $!hscale = $*gfx.HorizScaling / 100.0;
         $!ctx.scale($!hscale, 1)
             unless $!hscale =~= 1.0;
