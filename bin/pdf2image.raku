@@ -22,7 +22,7 @@ subset ImageFile of Str where /:i '.' [png|svg|pdf]/;
 sub MAIN(Str $infile,             #| input PDF
          ImageFile $outfile = output-filename($infile), #| output PNG, SVG or PDF file
          Bool :$trace = False,    #| trace execution
-         Bool :$shaped = False,   #| used shaped text rendering
+         Bool :$shape = False,   #| used shaped text rendering
          UInt :$page,             #| page to render
 	 Str  :$password = '',    #| password for the input PDF, if encrypted
     ) {
@@ -32,7 +32,7 @@ sub MAIN(Str $infile,             #| input PDF
 	!! $infile;
 
     my PDF::Class $pdf .= open( $input, :$password);
-    PDF::To::Cairo.save-as($pdf, $outfile, :$page, :$trace, :$shaped);
+    PDF::To::Cairo.save-as($pdf, $outfile, :$page, :$trace, :$shape);
 }
 
 =begin pod
