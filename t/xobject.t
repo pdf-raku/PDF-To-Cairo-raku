@@ -50,6 +50,7 @@ $page.graphics: -> $gfx {
     $gfx.do($form, 10, 450);
 }
 lives-ok {$feed.surface.write_png: "t/xobject.png"}, 'write_png';
-$pdf.save-as: "t/xobject.pdf";
+$pdf.id = $*PROGRAM-NAME.fmt('%-16.16s');
+$pdf.save-as: "t/xobject.pdf", :!info;
 
 done-testing;

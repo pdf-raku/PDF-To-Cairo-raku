@@ -63,6 +63,9 @@ $page.graphics: -> $gfx {
                 .ShowText("M$m ");
             }
         }
+        .FillColor = rgb( .5, .9, .5);
+        .Rectangle(10, $y+1, 420, 12);
+        .Fill;
     }
 
     $page.text: {
@@ -75,6 +78,7 @@ $page.graphics: -> $gfx {
      }
 }
 $feed.surface.write_png: "t/text.png";
-lives-ok { $pdf.save-as: "t/text.pdf" };
+$pdf.id = $*PROGRAM-NAME.fmt('%-16.16s');
+lives-ok { $pdf.save-as: "t/text.pdf", :!info };
 
 done-testing;
