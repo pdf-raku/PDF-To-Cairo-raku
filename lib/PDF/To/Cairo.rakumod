@@ -339,18 +339,11 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     }
 
-    constant @FillStrokeClip = [
-        (True,  False, False), # 0: FillText
-        (False, True,  False), # 1: OutlineText
-        (True,  True,  False), # 2: FillOutlineText
-        (False, False, False), # 3: InvisableText
-        (True,  False, True),  # 4: FillClipText
-        (False, True,  True),  # 5: OutlineClipText
-        (True,  True,  True),  # 6: FillOutlineClipText
-        (False, False, True),  # 7: ClipText
-    ];
     method !text-paint() {
-        my (\fill, \stroke, \clip) = @FillStrokeClip[$*gfx.TextRender];
+        my \text-mode = $*gfx.TextRender;
+        my \fill   = text-mode %% 2;
+        my \stroke = 0 < (text-mode mod 4) < 3;
+        my \clip   = text-mode >= 4;
 
         if fill {
             self!set-fill-color;
