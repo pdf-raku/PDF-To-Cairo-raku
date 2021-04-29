@@ -6,6 +6,9 @@ perl6:
 install:
   - rakudobrew build zef
   - zef --depsonly install .
+  - wget -q https://github.com/harfbuzz/harfbuzz/archive/2.7.4.tar.gz
+  - (tar xzf 2.7.4.tar.gz && cd harfbuzz-2.7.4 && ./autogen.sh && make)
 script:
+  - export LD_LIBRARY_PATH=`pwd`/harfbuzz-2.7.4/src/.libs
   - prove -ve "raku -I."
   - zef install .
