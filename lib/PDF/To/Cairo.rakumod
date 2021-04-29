@@ -339,11 +339,18 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     }
 
+    constant @FillStrokeClip = [
+        (True,  False, False), # 0: FillText
+        (False, True,  False), # 1: OutlineText
+        (True,  True,  False), # 2: FillOutlineText
+        (False, False, False), # 3: InvisableText
+        (True,  False, True),  # 4: FillClipText
+        (False, True,  True),  # 5: OutlineClipText
+        (True,  True,  True),  # 6: FillOutlineClipText
+        (False, False, True),  # 7: ClipText
+    ];
     method !text-paint() {
-        my \text-render = $*gfx.TextRender;
-        my \fill   = ?(text-render ~~ FillText|FillOutlineText|FillClipText|FillOutlineClipText);
-        my \stroke = ?(text-render ~~ OutlineText|FillOutlineText|OutlineClipText|FillOutlineClipText);
-        my \clip   = ?(text-render ~~ FillClipText|OutlineClipText|ClipText);
+        my (\fill, \stroke, \clip) = @FillStrokeClip[$*gfx.TextRender];
 
         if fill {
             self!set-fill-color;
@@ -353,6 +360,11 @@ class PDF::To::Cairo:ver<0.0.2> {
         if stroke {
             self!set-stroke-color;
             $!ctx.stroke: :preserve(clip);
+        }
+
+        if clip {
+            # Stubbed - see section 9.3.6 Text Rendering Mode
+            $!ctx.clip;
         }
     }
 
