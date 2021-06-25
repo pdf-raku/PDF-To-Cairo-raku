@@ -2,11 +2,9 @@
   "auth": "cpan:WARRINGD",
   "depends": [
     "Cairo:ver<0.2.7+>",
-    "HarfBuzz::Font::FreeType:ver<0.0.5+>",
-    "HarfBuzz::Shaper::Cairo",
     "PDF::Content",
     "PDF::Class",
-    "PDF::Font::Loader:ver<0.4.2+>",
+    "PDF::Font::Loader:ver<0.5.2+>",
     "Method::Also"
   ],
   "description": "Cairo rendering backend for PDF::Content (experimental)",

@@ -8,11 +8,11 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Class;
     use PDF::XObject::Image;
     need Cairo:ver(v0.2.1+);
-    use HarfBuzz::Font::FreeType;
-    use HarfBuzz::Shaper::Cairo;
     use PDF::Content::Graphics;
+    use PDF::Content::FontObj;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
-    use PDF::Font::Loader:ver(v0.2.3+);
+    use PDF::Font::Loader;
+    use PDF::Font::Loader::Metrics;
     use Font::FreeType::Face;
     use Method::Also;
 
@@ -31,7 +31,6 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
     has Cache $.cache .= new;
     has UInt $.nesting = 0;
-    has Bool $.shape = False; # experimental shape rendering
 
     submethod TWEAK(
         Bool :$trace,
@@ -286,13 +285,11 @@ class PDF::To::Cairo:ver<0.0.2> {
         %!current-font = $!cache.font{$dict} //= do {
             my $font-obj = PDF::Font::Loader.load-font: :$dict;
             my $ft-face = $font-obj.face;
-            my HarfBuzz::Font::FreeType() $font = %( :$ft-face, :features[:!kern], :$size )
-                if $!shape;
 
             my Cairo::Font $cairo-font .= create(
                 $ft-face.raw, :free-type,
             );
-            %( :$font-obj, :$cairo-font, :$font );
+            %( :$font-obj, :$cairo-font );
         }
         %!current-font<size> = $size;
         self!restore-font();
@@ -300,7 +297,6 @@ class PDF::To::Cairo:ver<0.0.2> {
     method !restore-font {
         if %!current-font {
             my $size = %!current-font<size>;
-            .size = $size with %!current-font<font>;
             $!ctx.set_font_size: $size;
             $!ctx.set_font_face(%!current-font<cairo-font>);
         }
@@ -313,30 +309,30 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
 
     method !text-path($text) {
-
-        if $!shape {
-            my $font = %!current-font<font>;
-            my Numeric $size = %!current-font<size>;
-            my HarfBuzz::Shaper::Cairo $shaper .= new: :$font, :buf{:$text};
-            my Num() $x = $!tx / $!hscale;
-            my Num() $y = $!ty - $*gfx.TextRise;
-            my Cairo::Glyphs $glyphs = $shaper.cairo-glyphs(:$x, :$y);
-            $!ctx.glyph_path($glyphs)
-                unless $*gfx.TextRender == InvisableText;
-            $!tx += $glyphs.x-advance * $!hscale;
-            $!ty += $glyphs.y-advance;
-        }
-        else {
-            unless $*gfx.TextRender == InvisableText {
-                $!ctx.move_to($!tx / $!hscale, $!ty - $*gfx.TextRise);
-                $!ctx.text_path($text);
+        my PDF::Content::FontObj $font = %!current-font<font-obj>;
+        my Numeric $size = %!current-font<size>;
+        my PDF::Font::Loader::Metrics @shape = $font.shape($text);
+        my Num() $x = $!tx / $!hscale;
+        my Num() $y = $!ty - $*gfx.TextRise;
+        my $x0 = $x;
+        my $y0 = $y;
+        my Cairo::Glyphs $glyphs .= new: :elems(+@shape);
+        for 0 ..^ +@shape {
+            my $metrics = @shape[$_];
+            given $glyphs[$_] {
+                .index = $metrics.cid;
+                .x = $x;
+                .y = $y;
             }
-            given $!ctx.text_extents($text) {
-                $!tx += .x_advance * $!hscale;
-                $!ty += .y_advance;
-            }
+            $x += $metrics.dx * $size;
+            $y += $metrics.dy * $size;
         }
 
+        $!ctx.glyph_path($glyphs)
+            unless $*gfx.TextRender == InvisableText;
+
+        $!tx += ($x - $x0) * $!hscale;
+        $!ty += $y - $y0;
     }
 
     method !text-paint() {
