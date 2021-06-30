@@ -1,6 +1,6 @@
-# PDF-To-Cairo-p6
+# PDF-To-Cairo-raku
 
-Some experimental PDF rendering to Cairo via the Perl 6 PDF Tool-chain.
+Some experimental PDF rendering to Cairo via the Raku PDF Tool-chain.
 
 To burst my.pdf to PNG images my-001.png my-002.png ...
 

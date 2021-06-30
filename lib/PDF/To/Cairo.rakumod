@@ -12,7 +12,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Content::FontObj;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Font::Loader;
-    use PDF::Font::Loader::Metrics;
+    use PDF::Font::Loader::Glyph;
     use Font::FreeType::Face;
     use Method::Also;
 
@@ -308,10 +308,11 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
 
-    method !text-path($text) {
+    method !text-path($byte-str) {
         my PDF::Content::FontObj $font = %!current-font<font-obj>;
         my Numeric $size = %!current-font<size>;
-        my PDF::Font::Loader::Metrics @shape = $font.shape($text);
+        my @cids = $font.cids($byte-str);
+        my PDF::Font::Loader::Glyph @shape = $font.glyphs(@cids);
         my Num() $x = $!tx / $!hscale;
         my Num() $y = $!ty - $*gfx.TextRise;
         my $x0 = $x;
@@ -320,12 +321,12 @@ class PDF::To::Cairo:ver<0.0.2> {
         for 0 ..^ +@shape {
             my $metrics = @shape[$_];
             given $glyphs[$_] {
-                .index = $metrics.cid;
+                .index = $metrics.gid;
                 .x = $x;
                 .y = $y;
             }
-            $x += $metrics.dx * $size;
-            $y += $metrics.dy * $size;
+            $x += $metrics.dx * $size / 1000;
+            $y += $metrics.dy * $size / 1000;
         }
 
         $!ctx.glyph_path($glyphs)
@@ -370,7 +371,7 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method ShowText($text-encoded) {
         self!text: {
-            self!text-path: %!current-font<font-obj>.decode($text-encoded, :str);
+            self!text-path: $text-encoded;
         }
     }
     method ShowSpaceText(List $text) {
@@ -378,7 +379,7 @@ class PDF::To::Cairo:ver<0.0.2> {
             my Numeric $font-size = $*gfx.Font[1];
             for $text.list {
                 when Str {
-                    self!text-path: %!current-font<font-obj>.decode($_, :str);
+                    self!text-path: $_;
                 }
                 when Numeric {
                     $!tx -= $_ * $font-size / 1000;
