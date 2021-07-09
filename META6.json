@@ -4,7 +4,7 @@
     "Cairo:ver<0.2.7+>",
     "PDF::Content",
     "PDF::Class",
-    "PDF::Font::Loader:ver<0.5.3+>",
+    "PDF::Font::Loader:ver<0.5.5+>",
     "Method::Also"
   ],
   "description": "Cairo rendering backend for PDF::Content (experimental)",

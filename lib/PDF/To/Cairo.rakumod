@@ -311,7 +311,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     method !text-path($byte-str) {
         my PDF::Content::FontObj $font = %!current-font<font-obj>;
         my Numeric $size = %!current-font<size>;
-        my @cids = $font.cids($byte-str);
+        my @cids = $font.decode-cids($byte-str);
         my PDF::Font::Loader::Glyph @shape = $font.glyphs(@cids);
         my Num() $x = $!tx / $!hscale;
         my Num() $y = $!ty - $*gfx.TextRise;
