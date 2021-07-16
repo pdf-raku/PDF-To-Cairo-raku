@@ -320,6 +320,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         my $x0 = $x;
         my $y0 = $y;
         my Cairo::Glyphs $cairo-glyphs .= new: :elems(+@shape);
+
         for 0 ..^ +@shape {
             my $pdf-glyph = @shape[$_];
             given $cairo-glyphs[$_] {
@@ -329,7 +330,9 @@ class PDF::To::Cairo:ver<0.0.2> {
             }
             $x += $char-sp  +  $pdf-glyph.dx * $size / 1000;
             $x += $word-sp
-                if $pdf-glyph.code-point == 32 || $pdf-glyph.name ~~ 'space';
+                if $word-sp && ($pdf-glyph.code-point == 32
+                                || ($pdf-glyph.name.defined
+                                    && $pdf-glyph.name eq 'space'));
 
             $y += $pdf-glyph.dy * $size / 1000;
         }
