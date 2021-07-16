@@ -18,7 +18,7 @@ endobj
 endobj
 
 4 0 obj
-<< /Length 988 >> stream
+<< /Length 1092 >> stream
 q
   BT
     /F1 10 Tf
@@ -47,10 +47,16 @@ q
     (and ) Tj
     -3 Ts
     (fall.) Tj
+    1 0 0 1 10 632 Tm
+    10 Tw
+    (Word space is 10. ) Tj
+    0 Tw
+    5 Tc
+    (Char space is 5.) Tj
   ET
   q
     BT
-      1 0 0 1 10 617 Tm
+      1 0 0 1 10 592 Tm
       /F1 32 Tf
       0.7 0.2 0.2 rg
       0.2 0.7 0.7 RG
@@ -71,11 +77,11 @@ q
       (M7 ) Tj
     ET
     0.5 0.9 0.5 rg
-    10 618 420 12 re
+    10 593 420 12 re
     f
   Q
   BT
-    1 0 0 1 10 587 Tm
+    1 0 0 1 10 552 Tm
     (HorizScale 100 ) Tj
     75 Tz
     (HorizScale 75 ) Tj
@@ -102,9 +108,9 @@ xref
 0000000065 00000 n 
 0000000196 00000 n 
 0000000286 00000 n 
-0000001326 00000 n 
+0000001431 00000 n 
 trailer
 << /ID [ (t/text.t        ) (t/text.t        ) ] /Root 1 0 R /Size 6 >>
 startxref
-1432
+1537
 %%EOF

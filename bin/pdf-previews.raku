@@ -8,7 +8,6 @@ sub MAIN(
     Str :$previews = '.previews', #| where to place previews
     Str :$password = '',          #| password for the input PDF, if encrypted
     Bool :$recursive = False,
-    Bool :$shape = False,        #| used shaped text rendering
     ) {
 
     my $preview-dir = $directory.IO.add($previews);
@@ -44,11 +43,10 @@ pdf-previews.pl - Scan a directory for PDF files. Create PNG previews
 
 =head1 SYNOPSIS
 
- pdf-previews.pl [directory] --previews=directory --shape
+ pdf-previews.pl [directory] --previews=directory
 
  Options:
    --password=str       # provide default password for encrypted PDF files
-   --shape             # used shaped text rendering (experimental)
 
 =head1 DESCRIPTION
 

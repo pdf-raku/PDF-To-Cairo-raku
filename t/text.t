@@ -50,6 +50,13 @@ $page.graphics: -> $gfx {
 
         .TextRise = -3;
         .ShowText("fall.");
+
+        .text-position = [10, $y -= 25];
+        .WordSpacing = 10;
+        .ShowText("Word space is 10. ");
+        .WordSpacing = 0;
+        .CharSpacing = 5;
+        .ShowText("Char space is 5.");
     }
 
     $page.graphics: {
@@ -69,7 +76,7 @@ $page.graphics: -> $gfx {
     }
 
     $page.text: {
-        .text-position = [10, $y -= 30];
+        .text-position = [10, $y -= 40];
 
         for 100, 75, 150 -> $hs {
             .HorizScaling = $hs;

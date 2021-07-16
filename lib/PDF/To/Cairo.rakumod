@@ -315,21 +315,26 @@ class PDF::To::Cairo:ver<0.0.2> {
         my PDF::Font::Loader::Glyph @shape = $font.glyphs(@cids);
         my Num() $x = $!tx / $!hscale;
         my Num() $y = $!ty - $*gfx.TextRise;
+        my $char-sp := $*gfx.CharSpacing;
+        my $word-sp := $*gfx.WordSpacing;
         my $x0 = $x;
         my $y0 = $y;
-        my Cairo::Glyphs $glyphs .= new: :elems(+@shape);
+        my Cairo::Glyphs $cairo-glyphs .= new: :elems(+@shape);
         for 0 ..^ +@shape {
-            my $metrics = @shape[$_];
-            given $glyphs[$_] {
-                .index = $metrics.gid;
+            my $pdf-glyph = @shape[$_];
+            given $cairo-glyphs[$_] {
+                .index = $pdf-glyph.gid;
                 .x = $x;
                 .y = $y;
             }
-            $x += $metrics.dx * $size / 1000;
-            $y += $metrics.dy * $size / 1000;
+            $x += $char-sp  +  $pdf-glyph.dx * $size / 1000;
+            $x += $word-sp
+                if $pdf-glyph.code-point == 32 || $pdf-glyph.name ~~ 'space';
+
+            $y += $pdf-glyph.dy * $size / 1000;
         }
 
-        $!ctx.glyph_path($glyphs)
+        $!ctx.glyph_path($cairo-glyphs)
             unless $*gfx.TextRender == InvisableText;
 
         $!tx += ($x - $x0) * $!hscale;
@@ -491,7 +496,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     # - These methods update the graphics state for later reference.
     method SetStrokeRGB(*@) is also<
         SetFillRGB SetStrokeCMYK SetFillCMYK SetStrokeGray SetFillGray
-        SetStrokeColorSpace SetFillColorSpace SetStrokeColor SetFillColor SetStrokeColorN SetFillColorN
+        SetStrokeColorSpace SetFillColorSpace SetStrokeColor SetFillColor SetStrokeColorN SetFillColorN SetWordSpacing SetCharSpacing
     > { }
 
     # - These methods update the text state for later reference
