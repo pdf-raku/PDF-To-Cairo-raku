@@ -7,6 +7,7 @@ sub MAIN(
     Str $directory = '.',         #| directory to be scanned for PDFS
     Str :$previews = '.previews', #| where to place previews
     Str :$password = '',          #| password for the input PDF, if encrypted
+    Bool :$trace = False,         #| trace execution
     Bool :$recursive = False,
     ) {
 
@@ -30,7 +31,7 @@ warn $input;
             };
             my $filename = $png-out.sprintf($page-num);
             $*ERR.print: "saving $input page $page-num -> $filename...\n"; 
-            $content.save-as-image($filename);
+            $content.save-as-image($filename, :$trace);
         }
     }
 }

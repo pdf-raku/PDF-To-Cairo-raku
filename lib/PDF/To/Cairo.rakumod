@@ -312,29 +312,28 @@ class PDF::To::Cairo:ver<0.0.2> {
         my PDF::Content::FontObj $font = %!current-font<font-obj>;
         my Numeric $size = %!current-font<size>;
         my @cids = $font.decode-cids($byte-str);
-        my PDF::Font::Loader::Glyph @shape = $font.glyphs(@cids);
         my Num() $x = $!tx / $!hscale;
         my Num() $y = $!ty - $*gfx.TextRise;
         my $char-sp := $*gfx.CharSpacing;
         my $word-sp := $*gfx.WordSpacing;
         my $x0 = $x;
         my $y0 = $y;
-        my Cairo::Glyphs $cairo-glyphs .= new: :elems(+@shape);
+        my PDF::Font::Loader::Glyph @pdf-glyphs = $font.glyphs(@cids);
+        my Cairo::Glyphs $cairo-glyphs .= new: :elems(+@pdf-glyphs);
+        my int $i = 0;
 
-        for 0 ..^ +@shape {
-            my $pdf-glyph = @shape[$_];
-            given $cairo-glyphs[$_] {
+        for @pdf-glyphs -> $pdf-glyph {
+            given $cairo-glyphs[$i++] {
                 .index = $pdf-glyph.gid;
                 .x = $x;
                 .y = $y;
             }
-            $x += $char-sp  +  $pdf-glyph.dx * $size / 1000;
+            $x += $char-sp  +  $pdf-glyph.ax * $size / 1000;
             $x += $word-sp
                 if $word-sp && ($pdf-glyph.code-point == 32
-                                || ($pdf-glyph.name.defined
-                                    && $pdf-glyph.name eq 'space'));
+                                || $pdf-glyph.name ~~ 'space');
 
-            $y += $pdf-glyph.dy * $size / 1000;
+            $y += $pdf-glyph.ay * $size / 1000;
         }
 
         $!ctx.glyph_path($cairo-glyphs)
@@ -514,6 +513,8 @@ class PDF::To::Cairo:ver<0.0.2> {
     method BeginMarkedContentDict(Str, $) { }
     method EndMarkedContent() { }
     method MarkPointDict(Str, $) { }
+    method BeginExtended() {}
+    method EndExtended() {}
 
     method callback{
         sub ($op, *@args) {

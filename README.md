@@ -7,7 +7,7 @@ To burst my.pdf to PNG images my-001.png my-002.png ...
 bin/pdf2image.p6 my.pdf 
 
 Current renders:
-- simple text (no word or character spacing etc)
+- basic text, including fonts, word and character spacing
 - most drawing and graphics operators
 - form XObjects
 - some (mostly PNG like) image XObjects (depends on state
