@@ -122,14 +122,15 @@ class PDF::To::Cairo:ver<0.0.2> {
                 $!ctx.rgba( |@rgb, $alpha );
             }
             when 'Pattern' {
+                use PDF::Pattern :PatternTypes;
                 with $colors[0] {
-                    with $*gfx.resource-entry('Pattern', $_) -> $pattern {
+                    with $*gfx.resource-entry('Pattern', $_) -> PDF::Pattern $pattern {
                         given $pattern.PatternType {
-                            when 1 { # Tiling
+                            when Tiling {
                                 my $img = self!make-tiling-pattern($pattern, $alpha);
                                 $!ctx.pattern: $img;
                             }
-                            when 2 { # Shading
+                            when Shading {
                                 warn "can't do type-2 patterns (Shading) yet";
                                 Mu;
                             }
@@ -509,12 +510,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         $!ty = 0.0;
     }
     # - These methods have no affect on rendering
-    method BeginMarkedContent(Str) { }
-    method BeginMarkedContentDict(Str, $) { }
-    method EndMarkedContent() { }
-    method MarkPointDict(Str, $) { }
-    method BeginExtended() {}
-    method EndExtended() {}
+    method BeginMarkedContent(*@) is also<BeginMarkedContentDict EndMarkedContent MarkPointDict BeginExtended EndExtended> { }
 
     method callback{
         sub ($op, *@args) {
