@@ -8,7 +8,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Class;
     use PDF::XObject::Image;
     need Cairo:ver(v0.2.1+);
-    use PDF::Content::Graphics;
+    use PDF::Content::Canvas;
     use PDF::Content::FontObj;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Font::Loader;
@@ -16,7 +16,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     use Font::FreeType::Face;
     use Method::Also;
 
-    has $.content is required handles <width height>;
+    has PDF::Content::Canvas $.canvas is required handles <width height>; # page, xobject, pattern
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
     has Cairo::Context $.ctx .= new: $!surface;
     has %!current-font;
@@ -34,10 +34,10 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     submethod TWEAK(
         Bool :$trace,
-        :$gfx = $!content.gfx(:$trace),
+        :$gfx = $!canvas.gfx(:$trace),
         Bool :$feed = True,
         Bool :$transparent = False,
-        ) {
+    ) {
         self!init: :$transparent;
         $gfx.callback.push: self.callback
             if $feed;
@@ -45,19 +45,19 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method render(|c --> Cairo::Surface) {
         my $obj = self.new( :!feed, |c);
-        my PDF::Content::Graphics $content = $obj.content;
+        my PDF::Content::Canvas $canvas = $obj.canvas;
         my @callback = [ $obj.callback ];
-        if $content.has-pre-gfx {
-            my $pre-gfx = $content.new-gfx: :@callback;
-            $pre-gfx.ops: $content.pre-gfx.ops;
+        if $canvas.has-pre-gfx {
+            my $pre-gfx = $canvas.new-gfx: :@callback;
+            $pre-gfx.ops: $canvas.pre-gfx.ops;
         }
-        temp $content.gfx.callback = @callback;
-        $content.render;
+        temp $canvas.gfx.callback = @callback;
+        $canvas.render;
         $obj.surface;
     }
 
     method !init(:$transparent) {
-        my \bbox := $!content.bbox;
+        my \bbox := $!canvas.bbox;
         $!ctx.translate(-bbox[0], bbox[3]);
         $!ctx.line_width = 1.0;
         unless $transparent {
@@ -127,7 +127,7 @@ class PDF::To::Cairo:ver<0.0.2> {
                     with $*gfx.resource-entry('Pattern', $_) -> PDF::Pattern $pattern {
                         given $pattern.PatternType {
                             when Tiling {
-                                my $img = self!make-tiling-pattern($pattern, $alpha);
+                                my $img = self!render-tiling-pattern($pattern, $alpha);
                                 $!ctx.pattern: $img;
                             }
                             when Shading {
@@ -267,7 +267,6 @@ class PDF::To::Cairo:ver<0.0.2> {
     sub matrix-to-cairo(Num(Numeric) $scale-x, Num(Numeric) $skew-x,
                         Num(Numeric) $skew-y,  Num(Numeric) $scale-y,
                         Num(Numeric) $trans-x, Num(Numeric) $trans-y) {
-
        Cairo::Matrix.new.init(
             :xx($scale-x), :yy($scale-y),
             :yx(-$skew-x), :xy(-$skew-y),
@@ -402,17 +401,16 @@ class PDF::To::Cairo:ver<0.0.2> {
         self.ShowText($text-encoded);
     }
 
-    method !make-form($xobject) {
-        $!cache.form{$xobject} //= do {
+    method !render-form($canvas) {
+        $!cache.form{$canvas} //= do {
             my $nesting = $!nesting + 1;
-            self.render: :content($xobject), :transparent, :$!cache, :$nesting;
+            self.render: :$canvas, :transparent, :$!cache, :$nesting;
         }
     }
     need PDF::Pattern::Tiling;
-    method !make-tiling-pattern(PDF::Pattern::Tiling $pattern, $alpha) {
+    method !render-tiling-pattern(PDF::Pattern::Tiling $pattern, $alpha) {
         my $img = $!cache.pattern{$pattern}{$alpha} //= do {
-            my $nesting = $!nesting + 1;
-            my $image = self!make-form($pattern);
+            my $image = self!render-form($pattern);
             my $padded-img = Cairo::Image.create(
                 Cairo::FORMAT_ARGB32,
                 $pattern<XStep> // $image.width,
@@ -430,7 +428,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
         $patt;
     }
-    method !make-image(PDF::XObject::Image $xobject) {
+    method !render-image(PDF::XObject::Image $xobject) {
         $!cache.form{$xobject} //= do {
             my Cairo::Image $surface;
             do {
@@ -461,11 +459,11 @@ class PDF::To::Cairo:ver<0.0.2> {
 
         my $surface = do given $xobject<Subtype> {
             when 'Form' {
-                self!make-form($xobject);
+                self!render-form($xobject);
             }
             when 'Image' {
                 $!ctx.scale( 1/$xobject.width, 1/$xobject.height );
-                self!make-image($xobject);
+                self!render-image($xobject);
             }
         }
 
@@ -534,14 +532,14 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
 
-    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.png' $/, :$cache = Cache.new, |c) {
-        my Cairo::Surface $surface = self.render: :$content, :$cache, |c;
+    multi method save-as-image(PDF::Content::Canvas $canvas, Str $filename where /:i '.png' $/, :$cache = Cache.new, |c) {
+        my Cairo::Surface $surface = self.render: :$canvas, :$cache, |c;
         $surface.write_png: $filename;
     }
 
-    multi method save-as-image(PDF::Content::Graphics $content, Str $filename where /:i '.svg' $/, :$cache = Cache.new, |c) {
-        my Cairo::Surface::SVG $surface .= create($filename, $content.width, $content.height);
-        my $feed = self.render: :$content, :$surface, :$cache, |c;
+    multi method save-as-image(PDF::Content::Canvas $canvas, Str $filename where /:i '.svg' $/, :$cache = Cache.new, |c) {
+        my Cairo::Surface::SVG $surface .= create($filename, $canvas.width, $canvas.height);
+        my $feed = self.render: :$canvas, :$surface, :$cache, |c;
         $surface.finish;
     }
 
@@ -574,8 +572,8 @@ class PDF::To::Cairo:ver<0.0.2> {
         my Cache $cache .= new;
 
         for 1 .. $pages -> UInt $page-num {
-            my $content = $pdf.page($page-num);
-            PDF::To::Cairo.render: :$content, :$surface, :$cache, |c;
+            my $canvas = $pdf.page($page-num);
+            PDF::To::Cairo.render: :$canvas, :$surface, :$cache, |c;
             $surface.show_page;
         }
         $surface.finish;

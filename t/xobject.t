@@ -1,7 +1,8 @@
 use v6;
 use Test;
 use PDF::Class;
-use PDF::Page;
+use PDF::Content;
+use PDF::Content::Canvas;
 use PDF::To::Cairo;
 use PDF::Content::Page :PageSizes;
 use PDF::Content::XObject;
@@ -9,13 +10,13 @@ use PDF::Content::Color :rgb;
 use Cairo;
 
 my PDF::Class $pdf .= new;
-my $page = $pdf.add-page;
-$page.MediaBox = PageSizes::Letter;
-my PDF::To::Cairo $feed .= new: :content($page);
-$page.graphics: -> $gfx {
-    my $y = $page.MediaBox[3];
+my PDF::Content::Canvas $canvas = $pdf.add-page;
+$canvas.MediaBox = PageSizes::Letter;
+my PDF::To::Cairo $feed .= new: :$canvas;
+$canvas.graphics: -> $gfx {
+    my $y = $canvas.MediaBox[3];
 
-    my PDF::Content::XObject $form = $page.xobject-form: :BBox[0,0,150,150];
+    my PDF::Content::XObject $form = $canvas.xobject-form: :BBox[0,0,150,150];
     $form.graphics: {
         .FillColor = rgb( .8, .9, .9);
         .Rectangle(5,5,140,140);
@@ -36,7 +37,7 @@ $page.graphics: -> $gfx {
     $gfx.do($image, 10, 300);
 
     # form with non-zero origin
-    $form = $page.xobject-form: :BBox[-10,-10,80,80];
+    $form = $canvas.xobject-form: :BBox[-10,-10,80,80];
     $form.graphics: {
         .FillColor = rgb( .8, .9, .9);
         .Rectangle(-10,-10,80,80);

@@ -1,21 +1,22 @@
 use v6;
 use Test;
 use PDF::Class;
-use PDF::Page;
 use PDF::To::Cairo;
+use PDF::Content;
+use PDF::Content::Canvas;
 use PDF::Content::Page :PageSizes;
 use PDF::Content::Color :rgb;
 use Cairo;
 
 my PDF::Class $pdf .= new;
-my PDF::Page $page = $pdf.add-page;
-$page.MediaBox = PageSizes::Letter;
-my PDF::To::Cairo $feed .= new: :content($page), :!trace;
-$page.graphics: -> $gfx {
-    my $font = $page.core-font( :family<Helvetica> );
-    my $y = $page.MediaBox[3];
+my PDF::Content::Canvas $canvas = $pdf.add-page;
+$canvas.MediaBox = PageSizes::Letter;
+my PDF::To::Cairo $feed .= new: :$canvas, :!trace;
+$canvas.graphics: -> $gfx {
+    my $font = $canvas.core-font( :family<Helvetica> );
+    my $y = $canvas.MediaBox[3];
 
-    $page.text: {
+    $canvas.text: {
         .font = $font, 10;
         .text-position = [50, $y -= 20];
         .print('Hello World!');
@@ -59,8 +60,8 @@ $page.graphics: -> $gfx {
         .ShowText("Char space is 5.");
     }
 
-    $page.graphics: {
-        $page.text: {
+    $canvas.graphics: {
+        $canvas.text: {
             .text-position = [10, $y -= 40];
             .set-font($font, 32);
             .FillColor = rgb(.7, .2, .2);
@@ -75,7 +76,7 @@ $page.graphics: -> $gfx {
         .Fill;
     }
 
-    $page.text: {
+    $canvas.text: {
         .text-position = [10, $y -= 40];
 
         for 100, 75, 150 -> $hs {
