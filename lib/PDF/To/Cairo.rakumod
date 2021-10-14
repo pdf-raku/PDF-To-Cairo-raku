@@ -468,7 +468,8 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
 
         with $surface {
-            $!ctx.translate(0, -$xobject.height);
+            my List $bbox = $xobject.bbox;
+            $!ctx.translate($bbox[0], -$bbox[3]);
             $!ctx.set_source_surface($_);
             $!ctx.paint_with_alpha($*gfx.FillAlpha);
         }
