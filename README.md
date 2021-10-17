@@ -4,7 +4,7 @@ Some experimental PDF rendering to Cairo via the Raku PDF Tool-chain.
 
 To burst my.pdf to PNG images my-001.png my-002.png ...
 
-bin/pdf2image.p6 my.pdf 
+bin/pdf2image.raku my.pdf
 
 Current renders:
 - basic text, including fonts, word and character spacing

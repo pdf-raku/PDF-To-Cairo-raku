@@ -19,6 +19,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     has PDF::Content::Canvas $.canvas is required handles <width height>; # page, xobject, pattern
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
     has Cairo::Context $.ctx .= new: $!surface;
+    has Cairo::Path $!text-clip;
     has %!current-font;
     has Hash @!gsave;
     has Numeric ($!tx = 0.0, $!ty = 0.0); # text flow
@@ -41,6 +42,9 @@ class PDF::To::Cairo:ver<0.0.2> {
         self!init: :$transparent;
         $gfx.callback.push: self.callback
             if $feed;
+    }
+    submethod DESTORY {
+        .destroy with $!text-clip;
     }
 
     method render(|c --> Cairo::Surface) {
@@ -360,8 +364,8 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
 
         if clip {
-            # Stubbed - see section 9.3.6 Text Rendering Mode
-            $!ctx.clip;
+            .destroy with $!text-clip;
+            $!text-clip = $!ctx.copy_path;
         }
     }
 
@@ -401,6 +405,13 @@ class PDF::To::Cairo:ver<0.0.2> {
         self.ShowText($text-encoded);
     }
 
+    method EndText {
+        with $!text-clip {
+            $!ctx.append_path: $_;
+            $!ctx.clip;
+        }
+    }
+
     method !render-form($canvas) {
         $!cache.form{$canvas} //= do {
             my $nesting = $!nesting + 1;
@@ -435,7 +446,7 @@ class PDF::To::Cairo:ver<0.0.2> {
                 CATCH {
                     when X::NYI {
                         # draw stub placeholder rectangle
-                        warn "stubbing image: {$xobject.perl}";
+                        warn "stubbing image: {$xobject.raku}";
                         $surface .= create(Cairo::FORMAT_ARGB32, $xobject.width, $xobject.height);
                         my Cairo::Context $ctx .= new: $surface;
                         $ctx.new_path;
@@ -504,7 +515,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     # - These methods update the text state for later reference
     method SetTextLeading($) is also<SetTextRise SetHorizScaling SetTextRender> { }
     # - These methods update text state and also reset text-flow
-    method BeginText(*@) is also<EndText SetTextMatrix TextMove TextNextLine TextMoveSet> {
+    method BeginText(*@) is also<SetTextMatrix TextMove TextNextLine TextMoveSet> {
         $!tx = 0.0;
         $!ty = 0.0;
     }

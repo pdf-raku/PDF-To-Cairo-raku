@@ -1,8 +1,6 @@
-#!/usr/bin/env perl6
+#!/usr/bin/env raku
 use v6;
 use PDF::Class;
-use PDF::Content;
-use PDF::Content::Graphics;
 use PDF::To::Cairo;
 
 #| reading from stdin
@@ -38,7 +36,7 @@ sub MAIN(Str $infile,             #| input PDF
 
 =head1 NAME
 
-pdf2image.p6 - Convert a PDF to PNG, or SVG images, using Perl 6!
+pdf2image.raku - Convert a PDF to PNG, or SVG images, using Perl 6!
 
 =head1 SYNOPSIS
 
