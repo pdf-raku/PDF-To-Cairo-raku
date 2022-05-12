@@ -2,9 +2,9 @@
   "auth": "cpan:WARRINGD",
   "depends": [
     "Cairo:ver<0.2.7+>",
-    "PDF::Content:ver<0.5.7+>",
+    "PDF::Content:ver<0.6.1+>",
     "PDF::Class:ver<0.4.16+>",
-    "PDF::Font::Loader:ver<0.5.12+>",
+    "PDF::Font::Loader:ver<0.6.1+>",
     "Method::Also"
   ],
   "description": "Cairo rendering backend for PDF::Content (experimental)",

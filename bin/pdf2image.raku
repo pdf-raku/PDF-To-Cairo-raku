@@ -21,6 +21,7 @@ sub MAIN(Str $infile,             #| input PDF
          ImageFile $outfile = output-filename($infile), #| output PNG, SVG or PDF file
          Bool :$trace = False,    #| trace execution
          UInt :$page,             #| page to render
+         UInt :$batch = 8,        #| thread batch size (pages)
 	 Str  :$password = '',    #| password for the input PDF, if encrypted
     ) {
 
@@ -29,7 +30,7 @@ sub MAIN(Str $infile,             #| input PDF
 	!! $infile;
 
     my PDF::Class $pdf .= open( $input, :$password);
-    PDF::To::Cairo.save-as($pdf, $outfile, :$page, :$trace);
+    PDF::To::Cairo.save-as($pdf, $outfile, :$page, :$trace, :$batch);
 }
 
 =begin pod

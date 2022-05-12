@@ -13,7 +13,7 @@ my PDF::Content::Canvas $canvas = $pdf.add-page;
 $canvas.MediaBox = PageSizes::Letter;
 my PDF::To::Cairo $feed .= new: :$canvas, :!trace;
 $canvas.graphics: -> $gfx {
-    my $font = $canvas.core-font( :family<Helvetica> );
+    my $font = $pdf.core-font( :family<Helvetica> );
     my $y = $canvas.MediaBox[3];
 
     $canvas.text: {

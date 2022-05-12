@@ -23,7 +23,7 @@ $canvas.graphics: -> $gfx {
         .Fill;
     }
     $form.text: {
-        .font = $form.core-font( :family<Times-Roman>, :weight<bold>, :style<italic> );
+        .font = $pdf.core-font( :family<Times-Roman>, :weight<bold>, :style<italic> );
         .text-position = [10, 120];
         .say: 'Hello, world!';
     }
@@ -44,7 +44,7 @@ $canvas.graphics: -> $gfx {
         .Fill;
     }
     $form.text: {
-        .font = $form.core-font( :family<Times-Roman>, :weight<bold>, :style<italic> );
+        .font = $pdf.core-font( :family<Times-Roman>, :weight<bold>, :style<italic> );
         .text-position = [0, 0];
         .say: 'this is 0,0';
     }

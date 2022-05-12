@@ -25,6 +25,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     has Numeric ($!tx = 0.0, $!ty = 0.0); # text flow
     has Numeric $!hscale = 1.0;
     my class Cache {
+        has Lock $!lock handles<protect> .= new;
         has Cairo::Surface %.form{Any};
         has %.pattern{Any};
         has %.font{Any};
@@ -78,14 +79,14 @@ class PDF::To::Cairo:ver<0.0.2> {
         need PDF::ColorSpace::Separation;
         need PDF::ColorSpace::DeviceN;
         need PDF::ColorSpace::CalRGB;
+        my constant @CS = [Mu, 'DeviceGray', Mu, 'DeviceRGB', 'DeviceCMYK'];
         my ($cs, $colors) = .kv;
         given $cs {
             when PDF::ColorSpace::ICCBased {
-                # nyi. fallback to a device color
-                my $alternate = .Alternate
-                    // [Mu, 'DeviceGray', Mu, 'DeviceRGB', 'DeviceCMYK'][+$colors];
-                self!set-color($_ => $colors, $alpha)
-                    with $alternate;
+                # nyi. fallback to alternative or raw colors
+                with .Alternate // @CS[+$colors] {
+                    self!set-color($_ => $colors, $alpha);
+                }
             }
             when PDF::ColorSpace::Separation
             |    PDF::ColorSpace::DeviceN {
@@ -97,16 +98,18 @@ class PDF::To::Cairo:ver<0.0.2> {
                 }
             }
             when PDF::ColorSpace::CalRGB {
-                my $rgb = $!cache.color{$_} //= do {
-                    my \g = .Gamma;
-                    my \m = .Matrix;
+                my $rgb = $!cache.protect: {
+                    $!cache.color{$_} //= do {
+                        my \g = .Gamma;
+                        my \m = .Matrix;
 
-                    my @abc[3] = $colors.list;
-                    # todo white/black point adjustments
-                    my @ = (0 .. 2).map: {
-                        m[$_] * (@abc[0] ** g[0])
-                      + m[$_ + 3] * (@abc[1] ** g[1])
-                      + m[$_ + 6] * (@abc[2] ** g[2])
+                        my @abc[3] = $colors.list;
+                        # todo white/black point adjustments
+                        my @ = (0 .. 2).map: {
+                            m[$_] * (@abc[0] ** g[0])
+                            + m[$_ + 3] * (@abc[1] ** g[1])
+                            + m[$_ + 6] * (@abc[2] ** g[2])
+                        }
                     }
                 }
                 self!set-color('DeviceRGB' => $rgb, $alpha);
@@ -286,14 +289,16 @@ class PDF::To::Cairo:ver<0.0.2> {
         self!concat-matrix(|@matrix);
     }
     method !set-font(Hash $dict, Numeric $size)  {
-        %!current-font = $!cache.font{$dict} //= do {
-            my $font-obj = PDF::Font::Loader.load-font: :$dict;
-            my $ft-face = $font-obj.face;
+        %!current-font = $!cache.protect: {
+            $!cache.font{$dict} //= do {
+                my $font-obj = PDF::Font::Loader.load-font: :$dict;
+                my $ft-face = $font-obj.face;
 
-            my Cairo::Font $cairo-font .= create(
-                $ft-face.raw, :free-type,
-            );
-            %( :$font-obj, :$cairo-font );
+                my Cairo::Font $cairo-font .= create(
+                    $ft-face.raw, :free-type,
+                );
+                %( :$font-obj, :$cairo-font );
+            }
         }
         %!current-font<size> = $size;
         self!restore-font();
@@ -413,23 +418,27 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
 
     method !render-form($canvas) {
-        $!cache.form{$canvas} //= do {
-            my $nesting = $!nesting + 1;
-            self.render: :$canvas, :transparent, :$!cache, :$nesting;
+        $!cache.protect: {
+            $!cache.form{$canvas} //= do {
+                my $nesting = $!nesting + 1;
+                self.render: :$canvas, :transparent, :$!cache, :$nesting;
+            }
         }
     }
     need PDF::Pattern::Tiling;
     method !render-tiling-pattern(PDF::Pattern::Tiling $pattern, $alpha) {
-        my $img = $!cache.pattern{$pattern}{$alpha} //= do {
-            my $image = self!render-form($pattern);
-            my $padded-img = Cairo::Image.create(
-                Cairo::FORMAT_ARGB32,
-                $pattern<XStep> // $image.width,
-                $pattern<YStep> // $image.height);
-            my Cairo::Context $ctx .= new($padded-img);
-            $ctx.set_source_surface($image);
-            $ctx.paint_with_alpha($alpha);
-            $padded-img;
+        my $img = $!cache.protect: {
+            $!cache.pattern{$pattern}{$alpha} //= do {
+                my $image = self!render-form($pattern);
+                my $padded-img = Cairo::Image.create(
+                    Cairo::FORMAT_ARGB32,
+                    $pattern<XStep> // $image.width,
+                    $pattern<YStep> // $image.height);
+                my Cairo::Context $ctx .= new($padded-img);
+                $ctx.set_source_surface($image);
+                $ctx.paint_with_alpha($alpha);
+                $padded-img;
+            }
         }
         my Cairo::Pattern::Surface $patt .= create($img.surface);
         $patt.extend = Cairo::Extend::EXTEND_REPEAT;
@@ -440,29 +449,31 @@ class PDF::To::Cairo:ver<0.0.2> {
         $patt;
     }
     method !render-image(PDF::XObject::Image $xobject) {
-        $!cache.form{$xobject} //= do {
-            my Cairo::Image $surface;
-            do {
-                CATCH {
-                    when X::NYI {
-                        # draw stub placeholder rectangle
-                        warn "stubbing image: {$xobject.raku}";
-                        $surface .= create(Cairo::FORMAT_ARGB32, $xobject.width, $xobject.height);
-                        my Cairo::Context $ctx .= new: $surface;
-                        $ctx.new_path;
-                        $ctx.rgba(.8,.8,.6, .5);
-                        $ctx.rectangle(0, 0, $xobject.width, $xobject.height);
-                        $ctx.fill(:preserve);
-                        $ctx.rgba(.3,.3,.3, .5);
-                        $ctx.line_width = 2;
-                        $ctx.stroke;
-                        $surface;
+        $!cache.protect: {
+            $!cache.form{$xobject} //= do {
+                my Cairo::Image $surface;
+                do {
+                    CATCH {
+                        when X::NYI {
+                            # draw stub placeholder rectangle
+                            warn "stubbing image: {$xobject.raku}";
+                            $surface .= create(Cairo::FORMAT_ARGB32, $xobject.width, $xobject.height);
+                            my Cairo::Context $ctx .= new: $surface;
+                            $ctx.new_path;
+                            $ctx.rgba(.8,.8,.6, .5);
+                            $ctx.rectangle(0, 0, $xobject.width, $xobject.height);
+                            $ctx.fill(:preserve);
+                            $ctx.rgba(.3,.3,.3, .5);
+                            $ctx.line_width = 2;
+                            $ctx.stroke;
+                            $surface;
+                        }
                     }
-                }
 
-                $surface = Cairo::Image.create($xobject.to-png.Buf);
+                    $surface = Cairo::Image.create($xobject.to-png.Buf);
+                }
+                $surface;
             }
-            $surface;
         }
     }
     method !place-image(PDF::XObject $xobject) {
@@ -555,12 +566,12 @@ class PDF::To::Cairo:ver<0.0.2> {
         $surface.finish;
     }
 
-    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.'('png'|'svg') $/, UInt :page($n), |c) {
+    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.'('png'|'svg') $/, UInt :page($n), UInt :$batch=8, |c) {
         my \format = $0.lc;
         my UInt $pages = $pdf.page-count;
         my Cache $cache .= new;
 
-        for 1 .. $pages -> UInt $page-num {
+        my @ =  (1 .. $pages).race(:$batch).map: -> UInt $page-num {
             next if $n.defined && $page-num != $n;
             my $img-filename = $outfile;
             if $outfile.index("%").defined {
@@ -577,13 +588,13 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
 
-    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.pdf' $/, |c) {
+    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.pdf' $/, UInt :$batch=8, |c) {
         my $page1 = $pdf.page(1);
         my Cairo::Surface::PDF $surface .= create($outfile, $page1.width, $page1.height);
         my UInt $pages = $pdf.page-count;
         my Cache $cache .= new;
 
-        for 1 .. $pages -> UInt $page-num {
+        my @ =  (1 .. $pages).race(:$batch).map: -> UInt $page-num {
             my $canvas = $pdf.page($page-num);
             PDF::To::Cairo.render: :$canvas, :$surface, :$cache, |c;
             $surface.show_page;
