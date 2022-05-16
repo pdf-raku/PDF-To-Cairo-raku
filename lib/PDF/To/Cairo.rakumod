@@ -319,7 +319,7 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method !text-path($byte-str) {
         my PDF::Content::FontObj $font = %!current-font<font-obj>;
-        my Numeric $size = %!current-font<size>;
+        my Numeric $size = %!current-font<size> / 1000;
         my @cids = $font.decode-cids($byte-str);
         my Num() $x = $!tx / $!hscale;
         my Num() $y = $!ty - $*gfx.TextRise;
@@ -330,25 +330,40 @@ class PDF::To::Cairo:ver<0.0.2> {
         my PDF::Font::Loader::Glyph @pdf-glyphs = $font.glyphs(@cids);
         my Cairo::Glyphs $cairo-glyphs .= new: :elems(+@pdf-glyphs);
         my int $i = 0;
+        my $ax = 0; # glyph advance
+        my $sx = 0; # actual substituted font advance
 
         for @pdf-glyphs -> $pdf-glyph {
             given $cairo-glyphs[$i++] {
                 .index = $pdf-glyph.gid;
-                .x = $x;
+                .x = $x + $ax;
                 .y = $y;
             }
-            $x += $char-sp  +  $pdf-glyph.ax * $size / 1000;
+            $ax += $pdf-glyph.ax * $size;
+            $sx += $pdf-glyph.sx;
+            $x += $char-sp;
             $x += $word-sp
                 if $word-sp && ($pdf-glyph.code-point == 32
                                 || $pdf-glyph.name ~~ 'space');
 
-            $y += $pdf-glyph.ay * $size / 1000;
+            $y += $pdf-glyph.ay * $size;
+        }
+
+        if $sx {
+            my $ratio = $ax / ($sx * $size);
+            unless $ratio =~= 1 {
+                # do a simple adjustment to match requested to
+                # actual glyph sizes
+                with %!current-font<size> -> $s {
+                    $!ctx.set_font_size: $s * $ratio;
+                }
+            }
         }
 
         $!ctx.glyph_path($cairo-glyphs)
             unless $*gfx.TextRender == InvisableText;
 
-        $!tx += ($x - $x0) * $!hscale;
+        $!tx += ($x + $ax - $x0) * $!hscale;
         $!ty += $y - $y0;
     }
 
