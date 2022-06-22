@@ -27,7 +27,7 @@ jobs:
           raku-version: ${{ matrix.raku-version }}
       - name Install Libraries (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run:
+        run: |
           apt-get install -y libfreetype6-dev
           apt-get install -y libharfbuzz-dev
       - name Install Libraries (MacOS)
