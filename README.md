@@ -26,17 +26,17 @@ PDF::To::Cairo.save-as($pdf, $outfile-templ);
 Description
 ----------
 This module contains some experimental work-in-progress PDF rendering to Cairo via the Raku PDF Tool-chain.
-It is able to render [PDF::Class](https://pdf-raku.github.io/PDF-Class-raku/) or [PDF::API6](https://pdf-raku.github.io/PDF-API6/) objects.
+It is able to render from [PDF::Class](https://pdf-raku.github.io/PDF-Class-raku/) or [PDF::API6](https://pdf-raku.github.io/PDF-API6/) objects.
 
-This module can currently render most fonts, simple colors, tiling patterns and basic graphics.
+This module can currently render text (most fonts), simple colors, tiling patterns and basic graphics.
 
-I am actively using this module to generate some basic thumbnails and image
+This module to generate some basic thumbnails and image
 previews, but at this stage it mostly exists to exercise Raku modules related
 to PDF, fonts and rendering, including:
 
 - [PDF](https://pdf-raku.github.io/PDF-raku/) (threading)
 - [PDF::Content](https://pdf-raku.github.io/PDF-Content-raku/)  (graphics, images)
-- [PDF::Font::Loader](https://pdf-raku.github.io/PDF-Font-Loader-raku/) (font loading, rendering, threading)
+- [PDF::Font::Loader](https://pdf-raku.github.io/PDF-Font-Loader-raku/) (font loading, decoding, rendering, threading)
 - [PDF::Class](https://pdf-raku.github.io/PDF-Class-raku/) (objects)]
 - [Font::FreeType](https://pdf-raku.github.io/Font-FreeType-raku/) (fonts and glyphs)
 - [Cairo](https://github.com/timo/cairo-p6) (rendering)
@@ -45,7 +45,7 @@ to PDF, fonts and rendering, including:
 Scripts
 ------
 
-### `pdf2image.raku --page=n --batch=m --trace --password=*** <in>.pdf [out-fmt]`
+#### `pdf2image.raku --page=n --batch=m --trace --password=*** <in>.pdf [out-fmt]`
 
 Where
 
@@ -53,7 +53,7 @@ Where
 
 - `[out-fmt]` is an option output file format specification (default <in>-%03d.png).
 
-#### `pdf2image.raku` Options
+##### `pdf2image.raku` Options
 
 - `--page=n` render just the `n`th page in the PDF file
 - `--batch=m` render to threads of batch size `m`
@@ -75,4 +75,6 @@ Nyi:
 - advanced clipping and graphics settings
 - many image types
 - shading patterns
+- some font types (in particular Type3 synthetic fonts)
+
 

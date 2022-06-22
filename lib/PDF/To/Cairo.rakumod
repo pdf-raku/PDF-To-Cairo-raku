@@ -171,7 +171,6 @@ class PDF::To::Cairo:ver<0.0.2> {
         if @!gsave {
             with @!gsave.pop {
                 %!current-font = %$_;
-                self!restore-font;
             }
         }
     }
@@ -297,17 +296,18 @@ class PDF::To::Cairo:ver<0.0.2> {
                 my Cairo::Font $cairo-font .= create(
                     $ft-face.raw, :free-type,
                 );
-                %( :$font-obj, :$cairo-font );
+                %( :$font-obj, :$cairo-font, );
             }
         }
         %!current-font<size> = $size;
-        self!restore-font();
     }
-    method !restore-font {
-        if %!current-font {
-            my $size = %!current-font<size>;
-            $!ctx.set_font_size: $size;
-            $!ctx.set_font_face(%!current-font<cairo-font>);
+    has %!scaled-font{Cairo::Font};
+    method !scaled-font($s) {
+        given  %!current-font<cairo-font> {
+            %!scaled-font{$_}{$s} //= do {
+                my Cairo::Matrix $scale .= new.scale($s, $s);
+                Cairo::ScaledFont.create($_, $scale, $!ctx.matrix);
+            }
         }
     }
 
@@ -327,7 +327,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         my $word-sp := $*gfx.WordSpacing;
         my $x0 = $x;
         my $y0 = $y;
-        my PDF::Font::Loader::Glyph @pdf-glyphs = $font.glyphs(@cids);
+        my PDF::Font::Loader::Glyph @pdf-glyphs = $font.get-glyphs(@cids);
         my Cairo::Glyphs $cairo-glyphs .= new: :elems(+@pdf-glyphs);
         my int $i = 0;
         my $ax = 0; # glyph advance
@@ -349,19 +349,16 @@ class PDF::To::Cairo:ver<0.0.2> {
             $y += $pdf-glyph.ay * $size;
         }
 
-        if $sx {
-            my $ratio = $ax / ($sx * $size);
-            unless $ratio =~= 1 {
-                # do a simple adjustment to match requested to
-                # actual glyph sizes
-                with %!current-font<size> -> $s {
-                    $!ctx.set_font_size: $s * $ratio;
-                }
+        # do a simple adjustment to match requested to
+        # actual glyph sizes
+        my $ratio = $sx && $size ?? $ax / ($sx * $size) !! 1;
+
+        unless $*gfx.TextRender == InvisableText {
+            with %!current-font<size> -> $s {
+                $!ctx.set_scaled_font: self!scaled-font($s);
+                $!ctx.glyph_path($cairo-glyphs);
             }
         }
-
-        $!ctx.glyph_path($cairo-glyphs)
-            unless $*gfx.TextRender == InvisableText;
 
         $!tx += ($x + $ax - $x0) * $!hscale;
         $!ty += $y - $y0;
@@ -611,7 +608,7 @@ class PDF::To::Cairo:ver<0.0.2> {
 
         my @ =  (1 .. $pages).race(:$batch).map: -> UInt $page-num {
             my $canvas = $pdf.page($page-num);
-            PDF::To::Cairo.render: :$canvas, :$surface, :$cache, |c;
+            self.render: :$canvas, :$surface, :$cache, |c;
             $surface.show_page;
         }
         $surface.finish;
