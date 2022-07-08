@@ -349,13 +349,13 @@ class PDF::To::Cairo:ver<0.0.2> {
             $y += $pdf-glyph.ay * $size;
         }
 
-        # do a simple adjustment to match requested to
-        # actual glyph sizes
-        my $ratio = $sx && $size ?? $ax / ($sx * $size) !! 1;
-
         unless $*gfx.TextRender == InvisableText {
+            # do a simple adjustment to match requested to
+            # actual glyph sizes
+            my $ratio = $sx && $size ?? $ax / ($sx * $size) !! 1;
+
             with %!current-font<size> -> $s {
-                $!ctx.set_scaled_font: self!scaled-font($s);
+                $!ctx.set_scaled_font: self!scaled-font($s * $ratio);
                 $!ctx.glyph_path($cairo-glyphs);
             }
         }
