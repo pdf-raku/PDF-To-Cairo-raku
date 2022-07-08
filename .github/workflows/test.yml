@@ -36,6 +36,7 @@ jobs:
           brew update
           brew install freetype
           brew install harfbuzz
+          brew install openssl
       - name: Install Dependencies
         run: |
           zef install --/test App::Prove6
