@@ -12,6 +12,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Content::FontObj;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Font::Loader;
+    use PDF::Font::Loader::FontObj;
     use PDF::Font::Loader::Glyph;
     use Font::FreeType::Face;
     use Method::Also;
@@ -115,18 +116,18 @@ class PDF::To::Cairo:ver<0.0.2> {
                 self!set-color('DeviceRGB' => $rgb, $alpha);
             }
             when 'DeviceRGB' {
-                $!ctx.rgba( |$colors, $alpha );
+                $!ctx.rgba: |$colors, $alpha;
             }
             when 'DeviceGray' {
                 my @rgb = $colors[0] xx 3;
-                $!ctx.rgba( |@rgb, $alpha );
+                $!ctx.rgba: |@rgb, $alpha;
             }
             when 'DeviceCMYK' {
                 # See [PDF 32000 10.3.5 - Conversion from DeviceCMYK to DeviceRGB]
                 my @cmyk = $colors.list;
                 my $k = @cmyk.pop;
                 my @rgb = @cmyk.map: { 1.0 - min(1.0, $_ + $k) };
-                $!ctx.rgba( |@rgb, $alpha );
+                $!ctx.rgba: |@rgb, $alpha;
             }
             when 'Pattern' {
                 use PDF::Pattern :PatternTypes;
@@ -150,7 +151,7 @@ class PDF::To::Cairo:ver<0.0.2> {
                     self!set-color($_ => $colors, $alpha);
                 }
                 else {
-                    warn "can't handle colorspace: $_";
+                    warn "unknown colorspace: $_";
                 }
             }
             default {
@@ -290,7 +291,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     method !set-font(Hash $dict, Numeric $size)  {
         %!current-font = $!cache.protect: {
             $!cache.font{$dict} //= do {
-                my $font-obj = PDF::Font::Loader.load-font: :$dict;
+                my PDF::Font::Loader::FontObj $font-obj = PDF::Font::Loader.load-font: :$dict;
                 my $ft-face = $font-obj.face;
 
                 my Cairo::Font $cairo-font .= create(
