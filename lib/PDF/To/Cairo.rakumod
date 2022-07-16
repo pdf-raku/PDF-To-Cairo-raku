@@ -12,7 +12,6 @@ class PDF::To::Cairo:ver<0.0.2> {
     use PDF::Content::FontObj;
     use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
     use PDF::Font::Loader;
-    use PDF::Font::Loader::FontObj;
     use PDF::Font::Loader::Glyph;
     use Font::FreeType::Face;
     use Method::Also;
@@ -291,7 +290,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     method !set-font(Hash $dict, Numeric $size)  {
         %!current-font = $!cache.protect: {
             $!cache.font{$dict} //= do {
-                my PDF::Font::Loader::FontObj $font-obj = PDF::Font::Loader.load-font: :$dict;
+                my PDF::Content::FontObj $font-obj = PDF::Font::Loader.load-font: :$dict;
                 my $ft-face = $font-obj.face;
 
                 my Cairo::Font $cairo-font .= create(
@@ -504,9 +503,10 @@ class PDF::To::Cairo:ver<0.0.2> {
 
         with $surface {
             my List $bbox = $xobject.bbox;
+            my Num() $alpha = $*gfx.FillAlpha;
             $!ctx.translate($bbox[0], -$bbox[3]);
             $!ctx.set_source_surface($_);
-            $!ctx.paint_with_alpha($*gfx.FillAlpha);
+            $!ctx.paint_with_alpha($alpha);
         }
 
         $!ctx.restore;
