@@ -246,6 +246,10 @@ class PDF::To::Cairo:ver<0.0.2> {
         $!ctx.line_width = $lw;
     }
 
+    method SetMiterLimit(Numeric $ml) {
+        $!ctx.miter_limit = $ml;
+    }
+
     method CurveTo(Numeric $x1, Numeric $y1, Numeric $x2, Numeric $y2, Numeric $x3, Numeric $y3) {
         my \c1 = |self!coords($x1, $y1);
         my \c2 = |self!coords($x2, $y2);
@@ -314,12 +318,22 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
 
-    method SetFont($,$?) is also<SetGraphicsState> {
+    method SetFont(|) {
         with $*gfx.Font {
             self!set-font: .[0], .[1];
         }
     }
 
+    method SetGraphicsState(Str $_) {
+        with $*gfx.resource-entry('ExtGState', $_) {
+            with .<Font> { self.SetFont }
+            with .<LJ>   { self.SetLineJoin($_) }
+            with .<LC>   { self.SetLineCap($_) }
+            with .<ML>   { self.SetMiterLimit($_) }
+            with .<D>    { self.SetDashPattern(.[0], .[1]) }
+            with .<LW>   { self.SetLineWidth($_) }
+        }
+    }
     enum BlendModes (
         :Normal(CAIRO_OPERATOR_OVER),
         :Compatible(CAIRO_OPERATOR_OVER),
