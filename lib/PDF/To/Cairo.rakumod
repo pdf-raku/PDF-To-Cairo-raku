@@ -7,14 +7,17 @@ class PDF::To::Cairo:ver<0.0.2> {
 #
     use PDF::Class;
     use PDF::XObject::Image;
-    need Cairo:ver(v0.2.1+);
+    use Cairo:ver(v0.2.1+);
     use PDF::Content::Canvas;
     use PDF::Content::FontObj;
-    use PDF::Content::Ops :OpCode, :LineCaps, :LineJoin, :TextMode;
+    use PDF::Content::Ops :OpCode, :TextMode;
     use PDF::Font::Loader;
     use PDF::Font::Loader::Glyph;
     use Font::FreeType::Face;
     use Method::Also;
+
+    constant PDF-Caps = PDF::Content::Ops::LineCaps;
+    constant PDF-Join = PDF::Content::Ops::LineJoin;
 
     has PDF::Content::Canvas $.canvas is required handles <width height>; # page, xobject, pattern
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
@@ -221,17 +224,17 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method SetLineCap(UInt $lc) {
         $!ctx.line_cap = do given $lc {
-            when ButtCaps   { Cairo::LINE_CAP_BUTT }
-            when RoundCaps  { Cairo::LINE_CAP_ROUND }
-            when SquareCaps { Cairo::LINE_CAP_SQUARE }
+            when PDF-Caps::ButtCaps   { Cairo::LINE_CAP_BUTT }
+            when PDF-Caps::RoundCaps  { Cairo::LINE_CAP_ROUND }
+            when PDF-Caps::SquareCaps { Cairo::LINE_CAP_SQUARE }
         }
     }
 
     method SetLineJoin(UInt $lc) {
         $!ctx.line_join = do given $lc {
-            when MiterJoin  { Cairo::LINE_JOIN_MITER }
-            when RoundJoin  { Cairo::LINE_JOIN_ROUND }
-            when BevelJoin  { Cairo::LINE_JOIN_BEVEL }
+            when PDF-Join::MiterJoin  { Cairo::LINE_JOIN_MITER }
+            when PDF-Join::RoundJoin  { Cairo::LINE_JOIN_ROUND }
+            when PDF-Join::BevelJoin  { Cairo::LINE_JOIN_BEVEL }
         }
     }
 
@@ -317,6 +320,30 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
     }
 
+    enum BlendModes (
+        :Normal(CAIRO_OPERATOR_OVER),
+        :Compatible(CAIRO_OPERATOR_OVER),
+        :Multiply(CAIRO_OPERATOR_MULTIPLY),
+        :Screen(CAIRO_OPERATOR_SCREEN),
+        :Overlay(CAIRO_OPERATOR_OVERLAY),
+        :Darken(CAIRO_OPERATOR_DARKEN),
+        :Lighten(CAIRO_OPERATOR_LIGHTEN),
+        :ColorDodge(CAIRO_OPERATOR_COLOR_DODGE),
+        :ColorBurn(CAIRO_OPERATOR_COLOR_BURN),
+        :HardLight(CAIRO_OPERATOR_HARD_LIGHT),
+        :SoftLight(CAIRO_OPERATOR_SOFT_LIGHT),
+        :Difference(CAIRO_OPERATOR_DIFFERENCE),
+        :Exclusion(CAIRO_OPERATOR_EXCLUSION),
+        :Hue(CAIRO_OPERATOR_HSL_HUE),
+        :Saturation(CAIRO_OPERATOR_HSL_SATURATION),
+        :Color(CAIRO_OPERATOR_HSL_COLOR),
+        :Luminosity(CAIRO_OPERATOR_HSL_LUMINOSITY),
+    );
+    constant %BlendModeCairo = BlendModes.enums.Hash;
+
+    sub cairo-blend-mode(Str:D $_) {
+        %BlendModeCairo{$_} // CAIRO_OPERATOR_OVER;
+    }
     method !text-path($byte-str) {
         my PDF::Content::FontObj $font = %!current-font<font-obj>;
         my Numeric $size = %!current-font<size> / 1000;
@@ -355,6 +382,10 @@ class PDF::To::Cairo:ver<0.0.2> {
             my $ratio = $sx && $size ?? $ax / ($sx * $size) !! 1;
 
             with %!current-font<size> -> $s {
+                # do a simple adjustment to match requested to
+                # actual glyph sizes
+                my $ratio = $sx && $size ?? $ax / ($sx * $size) !! 1;
+
                 $!ctx.set_scaled_font: self!scaled-font($s * $ratio);
                 $!ctx.glyph_path($cairo-glyphs);
             }
@@ -505,6 +536,7 @@ class PDF::To::Cairo:ver<0.0.2> {
             my List $bbox = $xobject.bbox;
             my Num() $alpha = $*gfx.FillAlpha;
             $!ctx.translate($bbox[0], -$bbox[3]);
+            $!ctx.operator = cairo-blend-mode($*gfx.BlendMode);
             $!ctx.set_source_surface($_);
             $!ctx.paint_with_alpha($alpha);
         }
