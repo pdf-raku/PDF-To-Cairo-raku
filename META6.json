@@ -1,8 +1,8 @@
 {
-  "auth": "cpan:WARRINGD",
+  "auth": "zef:dwarring",
   "depends": [
     "Cairo:ver<0.3.2+>",
-    "PDF::Content:ver<0.6.1+>",
+    "PDF::Content:ver<0.6.7+>",
     "PDF::Class:ver<0.4.16+>",
     "PDF::Font::Loader:ver<0.6.2+>",
     "PDF::Native",
