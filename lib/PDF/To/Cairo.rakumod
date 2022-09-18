@@ -16,8 +16,8 @@ class PDF::To::Cairo:ver<0.0.2> {
     use Font::FreeType::Face;
     use Method::Also;
 
-    constant PDF-Caps = PDF::Content::Ops::LineCaps;
-    constant PDF-Join = PDF::Content::Ops::LineJoin;
+    constant PDF-LineCaps = PDF::Content::Ops::LineCaps;
+    constant PDF-LineJoin = PDF::Content::Ops::LineJoin;
 
     has PDF::Content::Canvas $.canvas is required handles <width height>; # page, xobject, pattern
     has Cairo::Surface $.surface = Cairo::Image.create(Cairo::FORMAT_ARGB32, self.width, self.height);
@@ -107,11 +107,12 @@ class PDF::To::Cairo:ver<0.0.2> {
                         my \m = .Matrix;
 
                         my @abc[3] = $colors.list;
+                        @abc **= g[$_] for ^3;
                         # todo white/black point adjustments
-                        my @ = (0 .. 2).map: {
-                            m[$_] * (@abc[0] ** g[0])
-                            + m[$_ + 3] * (@abc[1] ** g[1])
-                            + m[$_ + 6] * (@abc[2] ** g[2])
+                        my @ = (^3).map: {
+                            m[$_] * @abc[0]
+                            + m[$_ + 3] * @abc[1]
+                            + m[$_ + 6] * @abc[2]
                         }
                     }
                 }
@@ -224,17 +225,17 @@ class PDF::To::Cairo:ver<0.0.2> {
 
     method SetLineCap(UInt $lc) {
         $!ctx.line_cap = do given $lc {
-            when PDF-Caps::ButtCaps   { Cairo::LINE_CAP_BUTT }
-            when PDF-Caps::RoundCaps  { Cairo::LINE_CAP_ROUND }
-            when PDF-Caps::SquareCaps { Cairo::LINE_CAP_SQUARE }
+            when PDF-LineCaps::ButtCaps   { Cairo::LINE_CAP_BUTT }
+            when PDF-LineCaps::RoundCaps  { Cairo::LINE_CAP_ROUND }
+            when PDF-LineCaps::SquareCaps { Cairo::LINE_CAP_SQUARE }
         }
     }
 
     method SetLineJoin(UInt $lc) {
         $!ctx.line_join = do given $lc {
-            when PDF-Join::MiterJoin  { Cairo::LINE_JOIN_MITER }
-            when PDF-Join::RoundJoin  { Cairo::LINE_JOIN_ROUND }
-            when PDF-Join::BevelJoin  { Cairo::LINE_JOIN_BEVEL }
+            when PDF-LineJoin::MiterJoin  { Cairo::LINE_JOIN_MITER }
+            when PDF-LineJoin::RoundJoin  { Cairo::LINE_JOIN_ROUND }
+            when PDF-LineJoin::BevelJoin  { Cairo::LINE_JOIN_BEVEL }
         }
     }
 
@@ -251,22 +252,22 @@ class PDF::To::Cairo:ver<0.0.2> {
     }
 
     method CurveTo(Numeric $x1, Numeric $y1, Numeric $x2, Numeric $y2, Numeric $x3, Numeric $y3) {
-        my \c1 = |self!coords($x1, $y1);
-        my \c2 = |self!coords($x2, $y2);
-        my \c3 = |self!coords($x3, $y3);
+        my \c1 = self!coords($x1, $y1);
+        my \c2 = self!coords($x2, $y2);
+        my \c3 = self!coords($x3, $y3);
         $!ctx.curve_to(|c1, |c2, |c3);
     }
 
     method CurveToInitial(Numeric $x2, Numeric $y2, Numeric $x3, Numeric $y3) {
-        my \c1 = |self!coords($x2, $y2);
-        my \c2 = |self!coords($x3, $y3);
+        my \c1 = self!coords($x2, $y2);
+        my \c2 = self!coords($x3, $y3);
         my \c3 = c2;
         $!ctx.curve_to(|c1, |c2, |c3);
     }
 
     method CurveToFinal(Numeric $x1, Numeric $y1, Numeric $x3, Numeric $y3) {
-        my \c1 = |self!coords($x1, $y1);
-        my \c3 = |self!coords($x3, $y3);
+        my \c1 = self!coords($x1, $y1);
+        my \c3 = self!coords($x3, $y3);
         my \c2 = c3;
         $!ctx.curve_to(|c1, |c2, |c3);
     }
@@ -570,7 +571,7 @@ class PDF::To::Cairo:ver<0.0.2> {
     method BeginImage(%!image-dict) { }
     method ImageData($encoded) {
         my %dict = PDF::XObject::Image.inline-to-xobject(%!image-dict);
-        my PDF::XObject::Image $image = PDF::COS.coerce: :stream{ :%dict, :$encoded };
+        my PDF::XObject::Image() $image = { :%dict, :$encoded };
         self!place-image: $image;
     }
     method EndImage() { }
