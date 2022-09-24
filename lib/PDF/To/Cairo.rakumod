@@ -32,6 +32,7 @@ class PDF::To::Cairo:ver<0.0.2> {
         has Cairo::Surface %.form{Any};
         has %.pattern{Any};
         has %.font{Any};
+        has %.scaled-font{Any};
         has %.color{Any};
     }
     has Cache $.cache .= new;
@@ -312,9 +313,11 @@ class PDF::To::Cairo:ver<0.0.2> {
     has %!scaled-font{Cairo::Font};
     method !scaled-font($s) {
         given  %!current-font<cairo-font> {
-            %!scaled-font{$_}{$s} //= do {
-                my Cairo::Matrix $scale .= new.scale($s, $s);
-                Cairo::ScaledFont.create($_, $scale, $!ctx.matrix);
+             $!cache.protect: {
+                 $!cache.scaled-font{$_}{$s} //= do {
+                     my Cairo::Matrix $scale .= new.scale($s, $s);
+                     Cairo::ScaledFont.create($_, $scale, $!ctx.matrix);
+                 }
             }
         }
     }
