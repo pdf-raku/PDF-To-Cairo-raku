@@ -25,13 +25,12 @@ PDF::To::Cairo.save-as($pdf, $outfile-templ);
 
 Description
 ----------
-This module contains some experimental work-in-progress PDF rendering to Cairo via the Raku PDF Tool-chain.
-It is able to render from [PDF::Class](https://pdf-raku.github.io/PDF-Class-raku/) or [PDF::API6](https://pdf-raku.github.io/PDF-API6/) objects.
+This module is an experimental work-in-progress PDF rendering via Cairo and the Raku PDF Tool-chain.
+It is able to render from [PDF::Class](https://pdf-raku.github.io/PDF-Class-raku/) or [PDF::API6](https://pdf-raku.github.io/PDF-API6/) objects. Supported output formats are `PNG`, `PDF` (round trip) and `SVG`.
 
 This module can currently render text (most fonts), simple colors, tiling patterns and basic graphics.
 
-This module to generate some basic thumbnails and image
-previews, but at this stage it mostly exists to exercise Raku modules related
+At this stage its main purpose is to exercise Raku modules related
 to PDF, fonts and rendering, including:
 
 - [PDF](https://pdf-raku.github.io/PDF-raku/) (threading)
@@ -58,6 +57,11 @@ Where
 - `--page=n` render just the `n`th page in the PDF file
 - `--batch=m` render to threads of batch size `m`
 - `--trace`
+
+#### `pdf-previews.raku` <directory> --previews=<directory>`
+
+Render all PDF files in a given directory and render PNG previews
+to a given output directory; by default to a `.previews` subdirectory in the input directory.
 
 Status
 ------
