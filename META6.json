@@ -1,5 +1,7 @@
 {
   "auth": "zef:dwarring",
+  "build-depends": [
+  ],
   "depends": [
     "Cairo:ver<0.3.2+>",
     "PDF::Content:ver<0.6.7+>",
@@ -15,6 +17,12 @@
   "provides": {
     "PDF::To::Cairo": "lib/PDF/To/Cairo.rakumod"
   },
+  "resources": [
+  ],
   "source-url": "git://github.com/raku-pdf/PDF-To-Cairo-raku.git",
+  "tags": [
+  ],
+  "test-depends": [
+  ],
   "version": "0.0.2"
 }

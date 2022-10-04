@@ -8,14 +8,12 @@ sub MAIN(
     Str :$previews = '.previews', #| where to place previews
     Str :$password = '',          #| password for the input PDF, if encrypted
     Bool :$trace = False,         #| trace execution
-    Bool :$recursive = False,
     ) {
 
     my $preview-dir = $directory.IO.add($previews);
     mkdir $preview-dir;
 
     for $directory.IO.dir( :test(/:i '.pdf' $/) ) -> $input {
-warn $input;
         my $pdf = PDF::Class.open( $input, :$password);
         my $png-out = $preview-dir.IO.add: $input.IO.basename.subst(/:i '.pdf' $/, '-%03d.png');
 

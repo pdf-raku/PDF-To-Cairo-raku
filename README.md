@@ -60,7 +60,7 @@ Where
 
 #### `pdf-previews.raku` <directory> --previews=<directory>`
 
-Render all PDF files in a given directory and render PNG previews
+Render all PDF files in a given input directory (default `.`) and render PNG previews
 to a given output directory; by default to a `.previews` subdirectory in the input directory.
 
 Status
