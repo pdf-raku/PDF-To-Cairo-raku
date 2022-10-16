@@ -395,9 +395,6 @@ class PDF::To::Cairo:ver<0.0.2> {
         }
 
         unless $*gfx.TextRender == InvisableText {
-            # do a simple adjustment to match requested to
-            # actual glyph sizes
-
             with %!current-font<size> -> $fs {
                 # do a simple adjustment to match requested to
                 # actual glyph sizes
@@ -542,11 +539,11 @@ class PDF::To::Cairo:ver<0.0.2> {
 
         my $surface = do given $xobject<Subtype> {
             when 'Form' {
-                self!render-form($xobject);
+                self!render-form: $xobject;
             }
             when 'Image' {
-                $!ctx.scale( 1/$xobject.width, 1/$xobject.height );
-                self!render-image($xobject);
+                $!ctx.scale: 1/$xobject.width, 1/$xobject.height;
+                self!render-image: $xobject;
             }
         }
 
