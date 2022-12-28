@@ -2,5 +2,8 @@ Revision history for PDF-To-Cairo
 
 {{$NEXT}}
 
+0.0.3  2022-12-28T14:19:33+13:00
+    - Fix source-url in META6.json
+
 0.0.2  2022-10-05T07:04:49+13:00
     - Initial version
