@@ -310,17 +310,6 @@ class PDF::To::Cairo:ver<0.0.3> {
         }
         %!current-font<size> = $size;
     }
-    has %!scaled-font{Cairo::Font};
-    method !scaled-font($s) {
-        given  %!current-font<cairo-font> {
-             $!cache.protect: {
-                 $!cache.scaled-font{$_}{$s} //= do {
-                     my Cairo::Matrix $scale .= new.scale($s, $s);
-                     Cairo::ScaledFont.create($_, $scale, $!ctx.matrix);
-                 }
-            }
-        }
-    }
 
     method SetFont(|) {
         with $*gfx.Font {
@@ -401,7 +390,8 @@ class PDF::To::Cairo:ver<0.0.3> {
                 my $ratio = $sx && $size ?? $ax / ($sx * $size) !! 1;
                 $ratio = max(.75, min(1.5, $ratio));
 
-                $!ctx.set_scaled_font: self!scaled-font($fs * $ratio);
+                $!ctx.set_font_face: %!current-font<cairo-font>;
+                $!ctx.set_font_size: $fs * $ratio;
                 $!ctx.glyph_path($cairo-glyphs);
             }
         }
