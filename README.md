@@ -61,7 +61,7 @@ Where
 - `--batch=m` render to threads in batches of `m` pages
 - `--trace` trace PDF graphics
 
-#### `pdf-previews.raku` <directory> --previews=<directory>`
+#### `pdf-previews.raku <directory> --previews=<directory>`
 
 Render all PDF files in a given input directory (default `.`) and render PNG previews
 to a given output directory; by default to a `.previews` subdirectory in the input directory.

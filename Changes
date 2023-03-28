@@ -2,6 +2,11 @@ Revision history for PDF-To-Cairo
 
 {{$NEXT}}
 
+0.0.4  2023-03-29T06:13:50+13:00
+    - Protect font-scaling and rendering to fix threading related
+      issues.
+    - Take out scaled font caching; which seems to be incorrect.
+
 0.0.3  2022-12-28T14:19:33+13:00
     - Fix source-url in META6.json
 
