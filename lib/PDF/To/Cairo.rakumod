@@ -300,7 +300,7 @@ class PDF::To::Cairo:ver<0.0.3> {
         %!current-font = $!cache.protect: {
             $!cache.font{$dict} //= do {
                 my PDF::Content::FontObj $font-obj = PDF::Font::Loader.load-font: :$dict;
-                my $ft-face = $font-obj.face;
+                my Font::FreeType::Face $ft-face = $font-obj.face;
 
                 my Cairo::Font $cairo-font .= create(
                     $ft-face.raw, :free-type,
@@ -390,9 +390,11 @@ class PDF::To::Cairo:ver<0.0.3> {
                 my $ratio = $sx && $size ?? $ax / ($sx * $size) !! 1;
                 $ratio = max(.75, min(1.5, $ratio));
 
-                $!ctx.set_font_face: %!current-font<cairo-font>;
-                $!ctx.set_font_size: $fs * $ratio;
-                $!ctx.glyph_path($cairo-glyphs);
+                $font.encoder.protect: {
+                    $!ctx.set_font_face: %!current-font<cairo-font>;
+                    $!ctx.set_font_size: $fs * $ratio;
+                    $!ctx.glyph_path($cairo-glyphs);
+                }
             }
         }
 
