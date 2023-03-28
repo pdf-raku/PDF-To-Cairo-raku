@@ -39,7 +39,7 @@ to PDF, fonts and rendering, including:
 - [PDF](https://pdf-raku.github.io/PDF-raku/) (threading)
 - [PDF::Content](https://pdf-raku.github.io/PDF-Content-raku/)  (graphics, images)
 - [PDF::Font::Loader](https://pdf-raku.github.io/PDF-Font-Loader-raku/) (font loading, decoding, rendering, threading)
-- [PDF::Class](https://pdf-raku.github.io/PDF-Class-raku/) (objects)]
+- [PDF::Class](https://pdf-raku.github.io/PDF-Class-raku/) (objects)
 - [Font::FreeType](https://pdf-raku.github.io/Font-FreeType-raku/) (fonts and glyphs)
 - [Cairo](https://github.com/timo/cairo-p6) (rendering)
 
@@ -58,8 +58,8 @@ Where
 ##### `pdf2image.raku` Options
 
 - `--page=n` render just the `n`th page in the PDF file
-- `--batch=m` render to threads of batch size `m`
-- `--trace`
+- `--batch=m` render to threads in batches of `m` pages
+- `--trace` trace PDF graphics
 
 #### `pdf-previews.raku` <directory> --previews=<directory>`
 
