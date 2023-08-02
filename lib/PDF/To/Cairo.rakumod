@@ -6,6 +6,7 @@ class PDF::To::Cairo:ver<0.0.4> {
 # Aim is preview output for PDF::Content generated PDF's
 #
     use PDF::Class;
+    use PDF::XObject::Form;
     use PDF::XObject::Image;
     use Cairo:ver(v0.2.1+);
     use PDF::Content::Canvas;
@@ -25,7 +26,6 @@ class PDF::To::Cairo:ver<0.0.4> {
     has Cairo::Path $!text-clip;
     has %!current-font;
     has Hash @!gsave;
-    has Numeric ($!tx = 0.0, $!ty = 0.0); # text flow
     has Numeric $!hscale = 1.0;
     my class Cache {
         has Lock $!lock handles<protect> .= new;
@@ -355,8 +355,8 @@ class PDF::To::Cairo:ver<0.0.4> {
         my PDF::Content::FontObj $font = %!current-font<font-obj>;
         my Numeric $size = %!current-font<size> / 1000;
         my @cids = $font.decode-cids($byte-str);
-        my Num() $x = $!tx / $!hscale;
-        my Num() $y = $!ty - $*gfx.TextRise;
+        my Num() $x = $*gfx.tf-x / $!hscale;
+        my Num() $y = $*gfx.tf-y - $*gfx.TextRise;
         my $char-sp := $*gfx.CharSpacing;
         my $word-sp := $*gfx.WordSpacing;
         my $x0 = $x;
@@ -398,8 +398,8 @@ class PDF::To::Cairo:ver<0.0.4> {
             }
         }
 
-        $!tx += ($x + $ax - $x0) * $!hscale;
-        $!ty += $y - $y0;
+        $*gfx.tf-x += ($x + $ax - $x0) * $!hscale;
+        $*gfx.tf-y += $y - $y0;
     }
 
     method !text-paint() {
@@ -448,15 +448,13 @@ class PDF::To::Cairo:ver<0.0.4> {
                     self!text-path: $_;
                 }
                 when Numeric {
-                    $!tx -= $_ * $font-size / 1000;
+                    $*gfx.tf-x -= $_ * $font-size / 1000;
                 }
             }
         }
     }
 
     method MoveShowText($text-encoded) is also<MoveSetShowText> {
-        $!tx = 0.0;
-        $!ty = 0.0;
         self.ShowText($text-encoded);
     }
 
@@ -529,11 +527,11 @@ class PDF::To::Cairo:ver<0.0.4> {
     method !place-image(PDF::XObject $xobject) {
         $!ctx.save;
 
-        my $surface = do given $xobject<Subtype> {
-            when 'Form' {
+        my $surface = do given $xobject {
+            when PDF::XObject::Form {
                 self!render-form: $xobject;
             }
-            when 'Image' {
+            when  PDF::XObject::Image {
                 $!ctx.scale: 1/$xobject.width, 1/$xobject.height;
                 self!render-image: $xobject;
             }
@@ -579,8 +577,6 @@ class PDF::To::Cairo:ver<0.0.4> {
     method SetTextLeading($) is also<SetTextRise SetHorizScaling SetTextRender> { }
     # - These methods update text state and also reset text-flow
     method BeginText(*@) is also<SetTextMatrix TextMove TextNextLine TextMoveSet> {
-        $!tx = 0.0;
-        $!ty = 0.0;
     }
     # - These methods have no affect on rendering
     method BeginMarkedContent(*@) is also<BeginMarkedContentDict EndMarkedContent MarkPointDict BeginExtended EndExtended> { }
