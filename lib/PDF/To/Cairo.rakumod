@@ -57,7 +57,7 @@ class PDF::To::Cairo:ver<0.0.5> {
         my PDF::Content::Canvas $canvas = $obj.canvas;
         my @callback = [ $obj.callback ];
         if $canvas.has-pre-gfx {
-            my $pre-gfx = $canvas.new-gfx: :@callback;
+            my PDF::Content $pre-gfx .= new: :$canvas, :@callback;
             $pre-gfx.ops: $canvas.pre-gfx.ops;
         }
         temp $canvas.gfx.callback = @callback;
