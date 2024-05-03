@@ -4,21 +4,23 @@ use PDF::Class;
 use PDF::To::Cairo;
 
 #| reading from stdin
-multi sub output-filename('-') {"pdf-page-%03d.png"}
+multi sub output-filename('-', $) {"pdf-page-%03d.png"}
 #| user supplied format spec
-multi sub output-filename(Str $filename where /'%'/) {$filename}
+multi sub output-filename(Str $filename where /'%'/, $) {$filename}
 #| generated sprintf format from input/output filename template
-multi sub output-filename(Str $infile) is default {
-      my Str $ext = $infile.IO.extension;
-      $ext eq ''
-      ?? $infile ~ '-%03d.png'
-      !! $infile.subst(/ '.' $ext$/, '-%03d.png');
+multi sub output-filename(Str $infile, PDF::Class:D $pdf) is default {
+    my $digits = $pdf.Root.Pages.Count.fmt("%d").chars;
+    my $fmt = '-%0' ~ $digits ~ 'd.png';
+    my Str $ext = $infile.IO.extension;
+    $ext eq ''
+        ?? $infile ~ $fmt
+        !! $infile.subst(/ '.' $ext$/, $fmt);
 }
 
-subset ImageFile of Str where /:i '.' [png|svg|pdf]/;
+subset ImageFile of Str where Str:U|/:i '.' [png|svg|pdf]/;
 
 sub MAIN(Str $infile,             #| input PDF
-         ImageFile $outfile = output-filename($infile), #| output PNG, SVG or PDF file
+         ImageFile $outfile? is copy,      #| output PNG, SVG or PDF file
          Bool :$trace = False,    #| trace execution
          UInt :$page,             #| page to render
          UInt :$batch = 8,        #| thread batch size (pages)
@@ -30,6 +32,7 @@ sub MAIN(Str $infile,             #| input PDF
 	!! $infile;
 
     my PDF::Class $pdf .= open( $input, :$password);
+    $outfile //= output-filename($infile, $pdf);
     PDF::To::Cairo.save-as($pdf, $outfile, :$page, :$trace, :$batch);
 }
 
