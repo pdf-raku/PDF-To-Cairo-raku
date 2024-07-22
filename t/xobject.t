@@ -35,6 +35,7 @@ $canvas.graphics: -> $gfx {
 
     my PDF::Content::XObject $image .= open: "t/images/crosshair-100x100.png";
     $gfx.do($image, 10, 300);
+    $gfx.do($image, 150, 300, :inline);
 
     # form with non-zero origin
     $form = $canvas.xobject-form: :BBox[-10,-10,80,80];
