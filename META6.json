@@ -20,10 +20,10 @@
   },
   "resources": [
   ],
-  "source-url": "git://github.com/pdf-raku/PDF-To-Cairo-raku.git",
+  "source-url": "https://github.com/pdf-raku/PDF-To-Cairo-raku.git",
   "tags": [
   ],
   "test-depends": [
   ],
-  "version": "0.0.6"
+  "version": "0.0.7"
 }
