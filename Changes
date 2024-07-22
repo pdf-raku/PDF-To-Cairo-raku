@@ -1,6 +1,7 @@
 Revision history for PDF-To-Cairo
 
 {{$NEXT}}
+    - Fix inline images and bump to latest PDF, PDF::Class.
 
 0.0.6  2024-04-13T05:37:47+12:00
     - Remove invocation of deprecated new-gfx() method

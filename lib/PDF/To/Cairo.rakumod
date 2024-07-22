@@ -557,11 +557,10 @@ class PDF::To::Cairo:ver<0.0.6> {
         }
     }
 
-    has %!image-dict;
-    method BeginImage(%!image-dict) { }
-    method ImageData($encoded) {
-        my %dict = PDF::XObject::Image.inline-to-xobject(%!image-dict);
-        my PDF::XObject::Image() $image = { :%dict, :$encoded };
+    method BeginImage() { }
+    method ImageData(%image-dict, $encoded) {
+        my Hash $dict = PDF::XObject::Image.inline-to-xobject(%image-dict);
+        my PDF::XObject::Image $image .= new: :$dict, :$encoded;
         self!place-image: $image;
     }
     method EndImage() { }
