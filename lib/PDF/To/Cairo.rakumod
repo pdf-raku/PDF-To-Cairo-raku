@@ -383,18 +383,20 @@ class PDF::To::Cairo:ver<0.0.7> {
             $y += $pdf-glyph.ay * $size;
         }
 
-        with %!current-font<size> -> $fs {
-            # do a simple adjustment to match requested to
-            # actual glyph sizes
-            my $ratio = $sx && $size ?? $ax / ($sx * $size) !! 1;
-            $ratio = max(.75, min(1.5, $ratio));
+        unless $*gfx.TextRender == InvisableText {
+            with %!current-font<size> -> $fs {
+                # do a simple adjustment to match requested to
+                # actual glyph sizes
+                my $ratio = $sx && $size ?? $ax / ($sx * $size) !! 1;
+                $ratio = max(.75, min(1.5, $ratio));
 
-            $font.encoder.protect: {
-                $!ctx.set_font_face: %!current-font<cairo-font>;
-                $!ctx.set_font_size: $fs * $ratio;
-                $!ctx.glyph_path($cairo-glyphs);
+                $font.encoder.protect: {
+                    $!ctx.set_font_face: %!current-font<cairo-font>;
+                    $!ctx.set_font_size: $fs * $ratio;
+                    $!ctx.glyph_path($cairo-glyphs);
+                }
             }
-        }
+         }
 
         $*gfx.tf-x += ($x + $ax - $x0) * $!hscale;
         $*gfx.tf-y += $y - $y0;
@@ -423,7 +425,10 @@ class PDF::To::Cairo:ver<0.0.7> {
     }
 
     method !text(&draw-text) {
-        unless $*gfx.TextRender == InvisableText {
+        if $*gfx.TextRender == InvisableText {
+            &draw-text();
+        }
+        else {
             $!ctx.save;
             self!concat-matrix: |$*gfx.TextMatrix;
             $!hscale = $*gfx.HorizScaling / 100.0;
