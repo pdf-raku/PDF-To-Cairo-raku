@@ -86,7 +86,7 @@ $canvas.graphics: -> $gfx {
      }
 }
 $feed.surface.write_png: "t/text.png";
-$pdf.id = $*PROGRAM-NAME.fmt('%-16.16s');
+$pdf.id = $*PROGRAM.basename.fmt('%-16.16s');
 lives-ok { $pdf.save-as: "t/text.pdf", :!info };
 
 done-testing;

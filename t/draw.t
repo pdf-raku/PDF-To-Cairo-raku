@@ -83,7 +83,7 @@ $gfx.Restore;
 
 $gfx.Restore;
 
-$pdf.id = $*PROGRAM-NAME.fmt('%-16.16s');
+$pdf.id = $*PROGRAM.basename.fmt('%-16.16s');
 $pdf.save-as: "t/draw.pdf", :!info;
 lives-ok {$feed.surface.write_png: "t/draw.png"}, 'write to png';
 
