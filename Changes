@@ -1,7 +1,9 @@
 Revision history for PDF-To-Cairo
 
 {{$NEXT}}
-   - Fix PDF to PDF rendering in .save-as() method. Automatically
+
+0.0.8  2025-04-27T08:46:24+12:00
+   - Fix PDF to PDF handling in .save-as() method. Automatically
      generate a sequence of output files without the need for a
      template output filename.
    - Fix invisible text rendering to flow the text. This matches
