@@ -1,6 +1,6 @@
 use v6;
 
-class PDF::To::Cairo:ver<0.0.7> {
+class PDF::To::Cairo:ver<0.0.8> {
 
 # A lightweight draft renderer for PDF via Cairo to PNG, SVG, etc
 # Aim is preview output for PDF::Content generated PDF's
@@ -375,8 +375,8 @@ class PDF::To::Cairo:ver<0.0.7> {
             }
             $ax += $pdf-glyph.ax * $size;
             $sx += $pdf-glyph.sx || $pdf-glyph.ax;
-            $x += $char-sp;
-            $x += $word-sp
+            $x  += $char-sp;
+            $x  += $word-sp
                 if $word-sp && ($pdf-glyph.code-point == 32
                                 || $pdf-glyph.name ~~ 'space');
 
@@ -618,40 +618,57 @@ class PDF::To::Cairo:ver<0.0.7> {
         $surface.finish;
     }
 
-    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.'('png'|'svg') $/, UInt :page($n), UInt :$batch=8, |c) {
-        my \format = $0.lc;
-        my UInt $pages = $pdf.page-count;
+    multi method save-as(PDF::Class $pdf-in, Str() $outfile where /:i '.'('png'|'svg') $/, UInt :page($n), UInt :$batch=8, |c) {
+        my $format = $0.lc;
+        my UInt $pages = $pdf-in.page-count;
         my Cache $cache .= new;
 
         my @ =  (1 .. $pages).race(:$batch).map: -> UInt $page-num {
             next if $n.defined && $page-num != $n;
-            my $img-filename = $outfile;
+            my $out-filename = $outfile;
             if $outfile.index("%").defined {
-                $img-filename = $outfile.sprintf($page-num);
+                $out-filename = $outfile.sprintf($page-num);
             }
             else {
-                die "invalid 'sprintf' output page format: $outfile"
-                    if $pages > 1;
+                my $sfx = $page-num.fmt("-%03d.");
+                $sfx ~= $format;
+                $out-filename = $outfile.subst(/:i '.' $format $/, $sfx);
             }
 
-            my $page = $pdf.page($page-num);
-            $*ERR.print: "saving page $page-num -> {format.uc} $img-filename...\n"; 
-            $.save-as-image($page, $img-filename, :$cache, |c);
+            my $page = $pdf-in.page($page-num);
+            $*ERR.print: "saving page $page-num -> {$format.uc} $out-filename...\n"; 
+            $.save-as-image($page, $out-filename, :$cache, |c);
         }
     }
 
-    multi method save-as(PDF::Class $pdf, Str() $outfile where /:i '.pdf' $/, UInt :$batch=8, |c) {
-        my $page1 = $pdf.page(1);
-        my Cairo::Surface::PDF $surface .= create($outfile, $page1.width, $page1.height);
-        my UInt $pages = $pdf.page-count;
+    multi method save-as(PDF::Class $pdf-in, Str() $outfile where /:i '.pdf' $/, UInt :$batch=8, UInt :$burst = 10, |c) {
+        my $page1 = $pdf-in.page(1);
         my Cache $cache .= new;
+        my UInt $pages = $pdf-in.page-count;
+dd $pages;
+        my @ =  (1, $burst+1 ... $pages).race(:$batch).map: -> UInt $page-num {
+            given min($burst, $pages - $page-num + 1) -> $this-burst {
+                my $out-filename = $outfile;
+                if $outfile.index("%").defined {
+                    $out-filename = $outfile.sprintf($page-num);
+                }
+                else {
+                    my $sfx = $page-num.fmt("-%03d");
+                    $sfx ~= sprintf('+%d', $this-burst) unless $this-burst == 1;
+                    $sfx ~= '.pdf';
+                    $out-filename = $outfile.subst(/:i '.pdf' $/, $sfx);
+                }
 
-        my @ =  (1 .. $pages).race(:$batch).map: -> UInt $page-num {
-            my $canvas = $pdf.page($page-num);
-            self.render: :$canvas, :$surface, :$cache, |c;
-            $surface.show_page;
+                my Cairo::Surface::PDF $surface .= create($out-filename, $page1.width, $page1.height);
+                $*ERR.print: "saving page $out-filename...\n";
+                for 0 ..^ $this-burst {
+                    my $canvas = $pdf-in.page($page-num + $_);
+                    self.render: :$canvas, :$surface, :$cache, |c;
+                    $surface.show_page;
+                }
+                $surface.finish;
+            }
         }
-        $surface.finish;
      }
 
 }

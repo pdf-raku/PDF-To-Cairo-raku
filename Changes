@@ -1,6 +1,11 @@
 Revision history for PDF-To-Cairo
 
 {{$NEXT}}
+   - Fix PDF to PDF rendering in .save-as() method. Automatically
+     generate a sequence of output files without the need for a
+     template output filename.
+   - Fix invisible text rendering to flow the text. This matches
+     xpdf/evince/acroreader rendering.
 
 0.0.7  2024-07-23T06:58:01+12:00
     - Fix inline images and bump to latest PDF, PDF::Class.

@@ -3,27 +3,13 @@ use v6;
 use PDF::Class;
 use PDF::To::Cairo;
 
-#| reading from stdin
-multi sub output-filename('-', $) {"pdf-page-%03d.png"}
-#| user supplied format spec
-multi sub output-filename(Str $filename where /'%'/, $) {$filename}
-#| generated sprintf format from input/output filename template
-multi sub output-filename(Str $infile, PDF::Class:D $pdf) is default {
-    my $digits = $pdf.Root.Pages.Count.fmt("%d").chars;
-    my $fmt = '-%0' ~ $digits ~ 'd.png';
-    my Str $ext = $infile.IO.extension;
-    $ext eq ''
-        ?? $infile ~ $fmt
-        !! $infile.subst(/ '.' $ext$/, $fmt);
-}
-
 subset ImageFile of Str where Str:U|/:i '.' [png|svg|pdf]/;
 
 sub MAIN(Str $infile,             #| input PDF
          ImageFile $outfile? is copy,      #| output PNG, SVG or PDF file
          Bool :$trace = False,    #| trace execution
-         UInt :$page,             #| page to render
          UInt :$batch = 8,        #| thread batch size (pages)
+         UInt :$burst = 10,       #| render n pages at a time (PDF only)
 	 Str  :$password = '',    #| password for the input PDF, if encrypted
     ) {
 
@@ -31,9 +17,12 @@ sub MAIN(Str $infile,             #| input PDF
         ?? $*IN
 	!! $infile;
 
+    $outfile //= $infile eq q{-}
+        ?? "stdin-%03d.png" !! $infile.subst(/:i '.pdf' $/, '.png'); 
+
     my PDF::Class $pdf .= open( $input, :$password);
-    $outfile //= output-filename($infile, $pdf);
-    PDF::To::Cairo.save-as($pdf, $outfile, :$page, :$trace, :$batch);
+
+    PDF::To::Cairo.save-as($pdf, $outfile, :$trace, :$batch);
 }
 
 =begin pod
@@ -48,7 +37,8 @@ pdf2image.raku - Convert a PDF to PNG, or SVG images, using Perl 6!
 
  Options:
    --password=str       # provide a password for an encrypted PDF
-   --page=n             # render just this page
+   --batch=n            # thread batch size (pages)
+   --burst=n            # render n pages at a time (PDF only)
    --trace --debug      # debugging/tracing
 
 =head1 DESCRIPTION
