@@ -39,6 +39,9 @@ jobs:
           brew install harfbuzz
           brew install openssl
           brew install fontconfig
+          brew install cairo
+          zef install MacOS::NativeLib
+          ensure-symlink-for cairo
       - name: Install Dependencies
         run: |
           zef install --/test App::Prove6

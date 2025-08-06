@@ -2,7 +2,6 @@ use v6;
 use Test;
 use PDF::Class;
 use PDF::To::Cairo;
-use PDF::Content;
 use PDF::Content::Canvas;
 use PDF::Content::Page :PageSizes;
 use PDF::Content::Color :rgb;
