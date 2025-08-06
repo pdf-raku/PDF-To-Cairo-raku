@@ -21,7 +21,7 @@ $canvas.graphics: -> $gfx {
         .text-position = [50, $y -= 20];
         .print('Hello World!');
         .text-position = [10, $y -= 20];
-        my $text = $['The', -500, 'long', -500, 'and', -200, 'short.'];
+        my $text = ['The', -500, 'long', -500, 'and', -200, 'short.'];
         .ShowSpaceText($text);
         .font = $font, 15;
         .text-position = [10, $y -= 20];
@@ -43,21 +43,28 @@ $canvas.graphics: -> $gfx {
 
         .ShowText("text ");
 
-        .TextRise = 3;
-        .ShowText("rise ");
+        {
+            temp .TextRise = 3;
+            .ShowText("rise ");
+        }
 
-        .TextRise = 0;
         .ShowText("and ");
 
-        .TextRise = -3;
-        .ShowText("fall.");
+        {
+            temp .TextRise = -3;
+            .ShowText("fall.");
+        }
 
         .text-position = [10, $y -= 25];
-        .WordSpacing = 10;
-        .ShowText("Word space is 10. ");
-        .WordSpacing = 0;
-        .CharSpacing = 5;
-        .ShowText("Char space is 5.");
+
+        {
+            temp .WordSpacing = 10;
+            .ShowText("Word space is 10. ");
+        }
+        {
+            temp .CharSpacing = 5;
+            .ShowText("Char space is 5.");
+        }
     }
 
     $canvas.graphics: {
