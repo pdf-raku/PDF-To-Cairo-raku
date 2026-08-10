@@ -2,12 +2,13 @@
 use v6;
 use PDF::Class;
 use PDF::To::Cairo;
+use PDF::Content::Canvas;
 
 sub MAIN(
-    Str $directory = '.',         #| directory to be scanned for PDFS
-    Str :$previews = '.previews', #| where to place previews
-    Str :$password = '',          #| password for the input PDF, if encrypted
-    Bool :$trace = False,         #| trace execution
+    Str $directory = '.',         #= directory to be scanned for PDFS
+    Str :$previews = '.previews', #= where to place previews
+    Str :$password = '',          #= password for the input PDF, if encrypted
+    Bool :$trace = False,         #= trace execution
     ) {
 
     my $preview-dir = $directory.IO.add($previews);
@@ -20,7 +21,7 @@ sub MAIN(
         my UInt $pages = $pdf.page-count;
 
         for 1 .. $pages -> UInt $page-num {
-            my $content = $pdf.page($page-num);
+            my PDF::Content::Canvas $content = $pdf.page($page-num);
             $content.pre-graphics: {
                 # insert a border
                 .StrokeColor = :DeviceRGB[.5, .6, .6 ];

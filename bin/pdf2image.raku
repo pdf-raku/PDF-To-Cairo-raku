@@ -5,12 +5,12 @@ use PDF::To::Cairo;
 
 subset ImageFile of Str where Str:U|/:i '.' [png|svg|pdf]/;
 
-sub MAIN(Str $infile,             #| input PDF
-         ImageFile $outfile? is copy,      #| output PNG, SVG or PDF file
-         Bool :$trace = False,    #| trace execution
-         UInt :$batch = 8,        #| thread batch size (pages)
-         UInt :$burst = 10,       #| render n pages at a time (PDF only)
-	 Str  :$password = '',    #| password for the input PDF, if encrypted
+sub MAIN(Str $infile,             #= input PDF
+         ImageFile $outfile? is copy,      #= output PNG, SVG or PDF file
+         Bool :$trace = False,    #= trace execution
+         UInt :$batch = 8,        #= thread batch size (pages)
+         UInt :$burst = 10,       #= render n pages at a time (PDF only)
+	 Str  :$password = '',    #= password for the input PDF, if encrypted
     ) {
 
     my $input = $infile eq q{-}
